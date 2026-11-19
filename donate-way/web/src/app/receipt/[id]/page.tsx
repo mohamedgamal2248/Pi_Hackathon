@@ -18,7 +18,8 @@ export type PublicDonation = {
   isZakat: boolean;
   txid: string | null;
   at: string;
-  items: { amount: number; share: number; campaignId: string | null; title: string | null; cover: string | null; fund: string | null }[];
+  proofs?: { id: string; title: string; at: string; campaignId: string }[];
+  items: { amount: number; campaignId: string | null; title: string | null; cover: string | null; fund: string | null }[];
 };
 
 export default function ReceiptPage() {
@@ -89,6 +90,30 @@ export default function ReceiptPage() {
             </div>
           )}
         </dl>
+
+        {/* Journey of the gift */}
+        <div className="mt-5 space-y-3 rounded-2xl bg-surface-2 p-4 text-sm">
+          <b>{t("stages_title")}</b>
+          <ol className="space-y-2.5">
+            {([
+              ["stage_received", true],
+              ["stage_allocated", true],
+              ["stage_spent", (d.proofs ?? []).length > 0],
+            ] as const).map(([k, done]) => (
+              <li key={k} className="flex items-center gap-2.5">
+                <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full ${done ? "bg-brand text-brand-ink" : "bg-bg text-muted"}`}>{done ? <Icon name="check" size={14} /> : <Icon name="clock" size={14} />}</span>
+                <span className={done ? "" : "text-muted"}>{t(k)}</span>
+              </li>
+            ))}
+          </ol>
+          {(d.proofs ?? []).length === 0 ? (
+            <p className="text-xs text-muted">{t("stage_waiting")}</p>
+          ) : (
+            <Link href={`/campaigns/${d.proofs![0].campaignId}?tab=proof`} className="inline-block text-brand underline">
+              {t("stage_view")}
+            </Link>
+          )}
+        </div>
       </article>
 
       <div className="no-print grid grid-cols-2 gap-2">

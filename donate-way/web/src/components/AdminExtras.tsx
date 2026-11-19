@@ -8,6 +8,7 @@ import { usePi } from "@/lib/client/pi";
 import { pi, type Campaign } from "@/lib/client/types";
 
 type Ch = { id: string; title: string; goal: number; raised: number; ends_at: string; campaign_title: string | null };
+type Mt = { id: string; sponsor: string; multiplier: number; cap: number; ends_at: string; dw_campaigns: { title: string } | null };
 type Rep = { id: string; reason: string; status: string; created_at: string; campaign_id: string; dw_campaigns: { title: string } | null };
 
 // Admin: community challenges and user reports.
@@ -17,10 +18,13 @@ export function AdminExtras({ campaigns }: { campaigns: Campaign[] }) {
   const [ch, setCh] = useState<Ch[]>([]);
   const [reps, setReps] = useState<Rep[]>([]);
   const [form, setForm] = useState({ title: "", description: "", goal: "", campaign_id: "", hours: "48" });
+  const [matches, setMatches] = useState<Mt[]>([]);
+  const [mf, setMf] = useState({ campaign_id: "", sponsor: "", multiplier: "0.5", cap: "", hours: "72" });
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(() => {
     api<{ challenges: Ch[] }>("/api/admin/challenges").then((r) => setCh(r.challenges)).catch(() => undefined);
+    api<{ matches: Mt[] }>("/api/admin/matches").then((r) => setMatches(r.matches)).catch(() => undefined);
     api<{ reports: Rep[] }>("/api/admin/reports").then((r) => setReps(r.reports)).catch(() => undefined);
   }, [api]);
   useEffect(load, [load]);
@@ -44,6 +48,17 @@ export function AdminExtras({ campaigns }: { campaigns: Campaign[] }) {
       setBusy(false);
     }
   }
+  async function createMatch() {
+    setBusy(true);
+    try {
+      await api("/api/admin/matches", { method: "POST", body: JSON.stringify({ campaign_id: mf.campaign_id, sponsor: mf.sponsor, multiplier: Number(mf.multiplier), cap: Number(mf.cap), hours: Number(mf.hours) }) });
+      setMf({ campaign_id: "", sponsor: "", multiplier: "0.5", cap: "", hours: "72" });
+      load();
+    } finally {
+      setBusy(false);
+    }
+  }
+  const mok = mf.campaign_id && mf.sponsor.trim() && Number(mf.multiplier) > 0 && Number(mf.multiplier) <= 2 && Number(mf.cap) > 0 && Number(mf.hours) > 0;
   const ok = form.title.trim().length > 1 && Number(form.goal) > 0 && Number(form.hours) > 0;
 
   return (
@@ -82,6 +97,44 @@ export function AdminExtras({ campaigns }: { campaigns: Campaign[] }) {
                 className="text-xs text-danger underline"
                 onClick={() => api(`/api/admin/challenges?id=${c.id}`, { method: "DELETE" }).then(load).catch(() => undefined)}
               >
+                {t("remove")}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="card space-y-3 p-5">
+        <h2 className="flex items-center gap-2 font-bold">
+          <Icon name="heart" className="text-brand" /> {t("match_admin")}
+        </h2>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <select className="input sm:col-span-2" value={mf.campaign_id} onChange={(e) => setMf({ ...mf, campaign_id: e.target.value })}>
+            <option value="">—</option>
+            {campaigns.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.title}
+              </option>
+            ))}
+          </select>
+          <input className="input" placeholder={t("match_sponsor")} value={mf.sponsor} onChange={(e) => setMf({ ...mf, sponsor: e.target.value })} />
+          <input className="input num" inputMode="decimal" placeholder={t("match_x")} value={mf.multiplier} onChange={(e) => setMf({ ...mf, multiplier: e.target.value.replace(/[^0-9.]/g, "") })} />
+          <input className="input num" inputMode="decimal" placeholder={t("match_cap")} value={mf.cap} onChange={(e) => setMf({ ...mf, cap: e.target.value.replace(/[^0-9.]/g, "") })} />
+          <input className="input num" inputMode="numeric" placeholder={t("match_hours")} value={mf.hours} onChange={(e) => setMf({ ...mf, hours: e.target.value.replace(/[^0-9]/g, "") })} />
+        </div>
+        <button className="btn btn-primary w-full" disabled={!mok || busy} onClick={createMatch}>
+          {t("match_admin")}
+        </button>
+        <ul className="divide-y divide-line text-sm">
+          {matches.map((m) => (
+            <li key={m.id} className="flex items-center justify-between gap-2 py-2">
+              <span className="min-w-0">
+                <b className="block truncate">{m.dw_campaigns?.title}</b>
+                <span className="num text-xs text-muted">
+                  {m.sponsor} · x{m.multiplier} · {pi(m.cap)} · {new Date(m.ends_at).toLocaleString()}
+                </span>
+              </span>
+              <button className="text-xs text-danger underline" onClick={() => api(`/api/admin/matches?id=${m.id}`, { method: "DELETE" }).then(load).catch(() => undefined)}>
                 {t("remove")}
               </button>
             </li>

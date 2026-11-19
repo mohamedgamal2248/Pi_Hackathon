@@ -33,6 +33,7 @@ export type Update = {
 };
 
 export type CampaignDetail = Campaign & {
+  match: { sponsor: string; multiplier: number; cap: number; matched: number; remaining: number; ends_at: string } | null;
   following: boolean;
   updates: Update[];
   recentDonors: { name: string | null; amount: number; message: string | null; at: string }[];

@@ -61,3 +61,15 @@ export const GET = handler(async (request) => {
     }),
   });
 });
+
+// "Delete my data": removes what identifies the account in Sanad. Donation records stay (they are on the
+// public Pi blockchain and part of campaign totals) but are no longer linked to a name, wallet or invite link.
+export const DELETE = handler(async (request) => {
+  const session = requireSession(request);
+  await db().from("dw_follows").delete().eq("pi_uid", session.uid);
+  await db().from("dw_recurring").delete().eq("pi_uid", session.uid);
+  await db().from("dw_friend_pages").delete().eq("owner_uid", session.uid);
+  await db().from("dw_donations").update({ anonymous: true, message: null, referrer_uid: null }).eq("pi_uid", session.uid);
+  await db().from("dw_users").update({ username: `deleted-${session.uid.slice(0, 6)}`, wallet_address: null, referral_code: null, hawl_start: null, is_admin: false }).eq("pi_uid", session.uid);
+  return json({ ok: true });
+});

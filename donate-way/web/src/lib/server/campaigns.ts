@@ -1,5 +1,6 @@
 import "server-only";
 import { db, must } from "./db";
+import { activeMatch } from "./matching";
 import { wantsEnglish } from "./network";
 
 export const CATEGORIES = ["health", "education", "food", "water", "emergency", "orphans", "mosque", "debts", "other"] as const;
@@ -128,6 +129,7 @@ export async function getCampaign(id: string, viewerUid?: string, includeHidden 
   return {
     ...shape(c, stats.get(id), includeHidden),
     following: !!follow.data,
+    match: await activeMatch(id),
     updates: (updates.data ?? []).map((u) => ({ ...u, amount_spent: u.amount_spent == null ? null : Number(u.amount_spent) })),
     recentDonors,
   };

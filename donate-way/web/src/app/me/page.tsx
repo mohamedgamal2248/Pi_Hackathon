@@ -59,6 +59,7 @@ export default function MePage() {
   const [me, setMe] = useState<Me | null>(null);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [copied, setCopied] = useState(false);
+  const [pages, setPages] = useState<{ id: string; campaignTitle: string; raised: number; goal: number }[]>([]);
   const points = useCountUp(me?.points ?? 0);
 
   const load = useCallback(() => {
@@ -66,6 +67,9 @@ export default function MePage() {
   }, [api, user]);
    
   useEffect(load, [load]);
+  useEffect(() => {
+    if (user) api<{ pages: typeof pages }>("/api/friend-pages").then((r) => setPages(r.pages)).catch(() => undefined);
+  }, [api, user]);
   useEffect(() => {
     api<{ campaigns: Campaign[] }>("/api/campaigns").then((r) => setCampaigns(r.campaigns.filter((c) => c.status === "active"))).catch(() => undefined);
   }, [api]);
@@ -190,6 +194,26 @@ export default function MePage() {
         <p className="text-sm">{t("ambassador_stats", { n: me.referrals.count, amount: pi(me.referrals.total) })}</p>
       </section>
 
+      {pages.length > 0 && (
+        <section className="card space-y-2 p-5">
+          <h2 className="flex items-center gap-2 font-bold">
+            <Icon name="link" className="text-brand" /> {t("friend_mine")}
+          </h2>
+          <ul className="divide-y divide-line text-sm">
+            {pages.map((p) => (
+              <li key={p.id}>
+                <Link href={`/friend/${p.id}`} className="flex items-center justify-between gap-2 py-2.5">
+                  <span className="min-w-0 truncate">{p.campaignTitle}</span>
+                  <span className="num shrink-0 text-brand">
+                    {pi(p.raised)} / {pi(p.goal)}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {/* Zakat year */}
       <section className="card space-y-2 p-5">
         <h2 className="flex items-center gap-2 font-bold">
@@ -220,6 +244,17 @@ export default function MePage() {
         }}
       >
         {t("sign_out")}
+      </button>
+      <button
+        className="text-center text-xs text-muted underline lg:col-span-2"
+        onClick={async () => {
+          if (!window.confirm(t("delete_confirm"))) return;
+          await api("/api/me", { method: "DELETE" }).catch(() => undefined);
+          signOut();
+          router.push("/");
+        }}
+      >
+        {t("delete_data")}
       </button>
 
       {/* History */}

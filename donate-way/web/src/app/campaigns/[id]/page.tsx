@@ -3,6 +3,7 @@
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { Cover, Progress, StatusBadge } from "@/components/CampaignCard";
+import { useRouter } from "next/navigation";
 import { Sheet } from "@/components/Sheet";
 import { DonateSheet } from "@/components/DonateSheet";
 import { Icon } from "@/components/Icon";
@@ -25,6 +26,10 @@ function CampaignView() {
   const [missing, setMissing] = useState(false);
   const [tab, setTab] = useState<Tab>(search.get("tab") === "proof" ? "proof" : "story");
   const [donateOpen, setDonateOpen] = useState(false);
+  const router = useRouter();
+  const [friendOpen, setFriendOpen] = useState(false);
+  const [fGoal, setFGoal] = useState("");
+  const [fMsg, setFMsg] = useState("");
   const [reportOpen, setReportOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [reported, setReported] = useState(false);
@@ -48,6 +53,13 @@ function CampaignView() {
     if (!user && !(await signIn())) return;
     const r = await api<{ following: boolean }>(`/api/campaigns/${c.id}/follow`, { method: "POST", body: JSON.stringify({ follow: !c.following }) });
     setC({ ...c, following: r.following });
+  }
+
+  async function createFriendPage() {
+    if (!c || !(Number(fGoal) > 0)) return;
+    if (!user && !(await signIn())) return;
+    const r = await api<{ id: string }>("/api/friend-pages", { method: "POST", body: JSON.stringify({ campaign_id: c.id, goal: Number(fGoal), message: fMsg.trim() || null }) }).catch(() => null);
+    if (r) router.push(`/friend/${r.id}`);
   }
 
   async function sendReport() {
@@ -114,6 +126,11 @@ function CampaignView() {
           <p className="flex items-start gap-2 text-xs text-muted">
             <Icon name="shield" size={16} className="mt-0.5 shrink-0" /> {t("how_2_b")} {t("policy_note")}
           </p>
+          {canDonate && (
+            <button className="btn btn-ghost w-full" onClick={() => setFriendOpen(true)}>
+              <Icon name="link" size={18} /> {t("friend_start")}
+            </button>
+          )}
           <button className="text-xs text-muted underline" onClick={() => setReportOpen(true)}>
             {t("report_campaign")}
           </button>
@@ -121,6 +138,16 @@ function CampaignView() {
       </aside>
 
       <div className="space-y-5 lg:col-start-1 lg:row-start-1">
+        {c.match && (
+          <section className="card space-y-1 border-brand/50 p-4 text-sm">
+            <b className="flex items-center gap-2 text-brand">
+              <Icon name="flame" size={18} /> {t("match_label")}
+            </b>
+            <p>{t("match_banner", { sponsor: c.match.sponsor, x: c.match.multiplier, cap: fmt(c.match.cap) })}</p>
+            <p className="text-xs text-muted">{t("match_progress", { m: fmt(c.match.matched), r: fmt(c.match.remaining) })}</p>
+          </section>
+        )}
+
         {c.impact_units.length > 0 && (
           <section className="card p-5">
             <h2 className="mb-3 font-bold">{t("impact_units_title")}</h2>
@@ -235,6 +262,18 @@ function CampaignView() {
           </button>
         </div>
         </Portal>
+      )}
+
+      {friendOpen && (
+        <Sheet title={t("friend_start")} onClose={() => setFriendOpen(false)}>
+          <div className="space-y-3">
+            <input className="input num" inputMode="decimal" placeholder={t("friend_goal")} value={fGoal} onChange={(e) => setFGoal(e.target.value.replace(/[^0-9.]/g, ""))} />
+            <textarea className="input min-h-20" maxLength={200} placeholder={t("friend_msg")} value={fMsg} onChange={(e) => setFMsg(e.target.value)} />
+            <button className="btn btn-primary w-full" disabled={!(Number(fGoal) > 0)} onClick={createFriendPage}>
+              {t("friend_create")}
+            </button>
+          </div>
+        </Sheet>
       )}
 
       {reportOpen && (

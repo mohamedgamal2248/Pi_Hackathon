@@ -27,6 +27,12 @@ export const GET = handler(async (_request, ctx: RouteContext<"/api/donations/[i
   } | null;
   const donor = d && !d.anonymous ? (await usernames([d.pi_uid])).get(d.pi_uid) ?? null : null;
   if (!d || d.status !== "completed") throw new HttpError(404, "not_found");
+  // Stages: received -> allocated -> spent with proof (any proof of spend posted after this gift).
+  const campaignIds = [...new Set(d.dw_donation_items.map((i) => i.campaign_id).filter(Boolean))] as string[];
+  const { data: proofRows } = campaignIds.length
+    ? await db().from("dw_updates").select("id,title,created_at,campaign_id").eq("kind", "proof_of_spend").in("campaign_id", campaignIds).gte("created_at", d.completed_at).order("created_at")
+    : { data: [] };
+  const proofs = (proofRows ?? []).map((p) => ({ id: p.id as string, title: p.title as string, at: p.created_at as string, campaignId: p.campaign_id as string }));
   return json({
     donation: {
       id: d.id,
@@ -36,6 +42,7 @@ export const GET = handler(async (_request, ctx: RouteContext<"/api/donations/[i
       gift: d.gift,
       isZakat: d.is_zakat,
       txid: d.txid,
+      proofs,
       at: d.completed_at,
       items: d.dw_donation_items.map((i) => ({
         amount: Number(i.amount),

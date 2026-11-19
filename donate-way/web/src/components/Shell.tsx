@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { isStagingHost } from "@/lib/client/types";
 import { DonateSheet } from "@/components/DonateSheet";
+import { Logo } from "@/components/Logo";
 import { Icon, type IconName } from "@/components/Icon";
 import { useLang, type TKey } from "@/lib/client/i18n";
 import { usePi } from "@/lib/client/pi";
@@ -57,7 +58,8 @@ export function Shell({ children }: { children: ReactNode }) {
       )}
       <header className="sticky top-0 z-30 border-b border-line bg-bg/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-2.5 sm:px-6">
-          <Link href="/" className="flex items-baseline gap-2 text-2xl font-bold" aria-label={t("app_name")}>
+          <Link href="/" className="flex items-center gap-2 text-2xl font-bold" aria-label={t("app_name")}>
+            <Logo size={30} />
             <span>
               {t("app_name")}
               <span className="text-brand">.</span>
@@ -100,6 +102,9 @@ export function Shell({ children }: { children: ReactNode }) {
         <div className="mb-1 flex flex-wrap justify-center gap-x-4">
           <Link href="/transparency" className="py-2">
             {t("transparency")}
+          </Link>
+          <Link href="/why" className="py-2">
+            {t("why")}
           </Link>
           <Link href="/season" className="py-2">
             {t("season")}
