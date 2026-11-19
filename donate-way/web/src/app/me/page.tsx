@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { Money } from "@/components/Money";
@@ -52,7 +53,8 @@ function badges(me: Me): TKey[] {
 
 export default function MePage() {
   const { t, lang } = useLang();
-  const { api, user, signIn, ready } = usePi();
+  const { api, user, signIn, ready, signOut } = usePi();
+  const router = useRouter();
   const [me, setMe] = useState<Me | null>(null);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [copied, setCopied] = useState(false);
@@ -84,11 +86,11 @@ export default function MePage() {
   const target = (d: Me["donations"][number]) => d.dw_campaigns?.title ?? (d.fund === "zakat" ? t("to_zakat") : d.fund === "general" ? t("to_general") : t("to_cart"));
 
   return (
-    <div className="stagger grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+    <div className="stagger grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] [&>*]:min-w-0">
       {/* Totals */}
       <section className="card space-y-4 p-5 lg:col-span-2">
         <div className="flex items-center gap-3">
-          <div className="grid h-14 w-14 place-items-center rounded-2xl bg-brand text-2xl font-bold text-brand-ink">{me.username[0]?.toUpperCase()}</div>
+          <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-brand text-2xl font-bold text-brand-ink">{me.username[0]?.toUpperCase()}</div>
           <div className="min-w-0">
             <h1 className="truncate text-lg font-bold">@{me.username}</h1>
             <div className="mt-1 flex flex-wrap gap-1.5">
@@ -190,6 +192,16 @@ export default function MePage() {
       </section>
 
       {campaigns.length > 0 && <MonthlySadaqa campaigns={campaigns} />}
+
+      <button
+        className="btn btn-ghost w-full text-danger lg:col-span-2"
+        onClick={() => {
+          signOut();
+          router.push("/");
+        }}
+      >
+        {t("sign_out")}
+      </button>
 
       {/* History */}
       <section className="card p-5 lg:col-span-2">

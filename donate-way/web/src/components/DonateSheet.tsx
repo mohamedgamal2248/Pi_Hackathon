@@ -82,8 +82,10 @@ export function DonateSheet({
       if (isCart) cart.clear();
       onDone?.();
     } catch (e) {
-      if (e instanceof Error && e.message === "cancelled") setError(null);
-      else setError(e instanceof ApiError ? `${t("error_generic")} (${e.message})` : t("error_generic"));
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg === "cancelled") setError(null);
+      else if (/wallet/i.test(msg) && /misconfigur|not.*set|app wallet/i.test(msg)) setError(t("pay_wallet_missing"));
+      else setError(e instanceof ApiError ? `${t("error_generic")} (${e.message})` : `${t("error_generic")}${msg ? ` (${msg.slice(0, 80)})` : ""}`);
     } finally {
       setBusy(false);
     }
@@ -102,6 +104,11 @@ export function DonateSheet({
           <div className="text-4xl text-brand">
             <Money value={done.amount} animate />
           </div>
+          {user?.referralCode && (
+            <button className="btn btn-primary w-full" onClick={() => sharePi(t("app_name"), t("invite_text"), shareUrl("/", user.referralCode))}>
+              <Icon name="heart" size={18} /> {t("invite_friend")}
+            </button>
+          )}
           <div className="grid grid-cols-2 gap-2">
             <Link href={`/receipt/${done.donationId}`} className="btn btn-ghost" onClick={onClose}>
               <Icon name="receipt" size={18} /> {t("view_receipt")}

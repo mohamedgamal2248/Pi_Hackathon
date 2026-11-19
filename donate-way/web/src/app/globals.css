@@ -12,8 +12,8 @@
   --brand: #c6f432; /* lime: donate, numbers, active states (always with dark text) */
   --brand-ink: #0d1b1e;
   --brand-soft: #24371a;
-  --gold: #b9a8ff; /* violet: proof of spend, released funds, badges */
-  --gold-soft: #2c2459;
+  --gold: #67e8f9; /* cyan: proof of spend, released funds, badges (Pi's purple/gold are reserved) */
+  --gold-soft: #10343b;
   --danger: #ff6b57;
   --radius-card: 20px;
   --radius-control: 16px;

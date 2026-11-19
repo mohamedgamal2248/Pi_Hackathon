@@ -26,7 +26,7 @@ export function Progress({ raised, goal, className = "h-2.5" }: { raised: number
     return () => io.disconnect();
   }, [pct]);
   return (
-    <div ref={ref} className={`w-full overflow-hidden rounded-full bg-surface-2 ${className}`} role="progressbar" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100}>
+    <div ref={ref} className={`w-full overflow-hidden rounded-full bg-surface-2 ${className}`} role="progressbar" aria-label={`${Math.round(pct)}%`} aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100}>
       <div className="h-full rounded-full bg-brand transition-[width] duration-1000 ease-out motion-reduce:transition-none" style={{ width: `${shown}%` }} />
     </div>
   );
@@ -37,7 +37,7 @@ export function StatusBadge({ c }: { c: Pick<Campaign, "status" | "urgent"> }) {
   if (c.status === "funded") return <span className="rounded-full bg-gold-soft px-2.5 py-1 text-xs font-bold text-gold">{t("funded")}</span>;
   if (c.status === "completed") return <span className="rounded-full bg-surface-2 px-2.5 py-1 text-xs text-muted">{t("completed")}</span>;
   if (c.status === "paused" || c.status === "draft") return <span className="rounded-full bg-surface-2 px-2.5 py-1 text-xs text-muted">{t(c.status as TKey)}</span>;
-  if (c.urgent) return <span className="rounded-full bg-danger px-2.5 py-1 text-xs font-bold text-white">{t("urgent")}</span>;
+  if (c.urgent) return <span className="rounded-full bg-danger px-2.5 py-1 text-xs font-bold text-brand-ink">{t("urgent")}</span>;
   return null;
 }
 

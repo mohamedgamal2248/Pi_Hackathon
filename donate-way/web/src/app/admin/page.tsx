@@ -15,6 +15,7 @@ type Dash = {
   stats: { total: number; toCampaigns: number; platformFees: number; donors: number; donations: number; released: number };
   today: number;
   funds: { general: number; zakat: number };
+  engagement: { active1d: number; active7d: number; active30d: number; new7d: number; returningDonors: number; retention: number; referralDonations: number; activeStreaks: number };
   campaigns: Campaign[];
 };
 
@@ -397,6 +398,29 @@ export default function AdminPage() {
           <div className="num text-lg font-bold">{pi(d.stats.released)}</div>
         </div>
       </div>
+
+      <section className="card space-y-3 p-5">
+        <h2 className="font-bold">{t("engagement")}</h2>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {(
+            [
+              ["m_active_1d", d.engagement.active1d],
+              ["m_active_7d", d.engagement.active7d],
+              ["m_active_30d", d.engagement.active30d],
+              ["m_new_7d", d.engagement.new7d],
+              ["m_returning", d.engagement.returningDonors],
+              ["m_retention", `${Math.round(d.engagement.retention * 100)}%`],
+              ["m_referrals", d.engagement.referralDonations],
+              ["m_streaks", d.engagement.activeStreaks],
+            ] as [TKey, number | string][]
+          ).map(([k, v]) => (
+            <div key={k} className="rounded-2xl bg-surface-2 p-3">
+              <div className="text-xs text-muted">{t(k)}</div>
+              <div className="num text-xl font-bold">{v}</div>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {editing && (
         <CampaignForm

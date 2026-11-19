@@ -8,7 +8,7 @@ import { Money } from "@/components/Money";
 import { useLang } from "@/lib/client/i18n";
 import { Reveal } from "@/lib/client/motion";
 import { usePi } from "@/lib/client/pi";
-import { pi, type Proof } from "@/lib/client/types";
+import { openExternal, pi, type Proof } from "@/lib/client/types";
 
 type Data = {
   stats: { total: number; toCampaigns: number; platformFees: number; donors: number; donations: number; campaigns: number; released: number };
@@ -115,9 +115,9 @@ export default function TransparencyPage() {
                   <Money value={d.appWallet.balance} />
                 </div>
               )}
-              <a className="text-sm text-brand underline" href={`https://blockexplorer.minepi.com/mainnet/accounts/${d.appWallet.address}`} target="_blank" rel="noreferrer">
+              <button className="text-sm text-brand underline" onClick={() => openExternal(`https://blockexplorer.minepi.com/mainnet/accounts/${d.appWallet!.address}`)}>
                 Pi Block Explorer
-              </a>
+              </button>
             </>
           ) : (
             <p className="text-sm text-muted">—</p>

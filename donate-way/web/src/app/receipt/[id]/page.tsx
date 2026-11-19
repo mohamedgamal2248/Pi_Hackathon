@@ -7,7 +7,7 @@ import { Icon } from "@/components/Icon";
 import { Money } from "@/components/Money";
 import { useLang } from "@/lib/client/i18n";
 import { usePi } from "@/lib/client/pi";
-import { fmt, shareUrl, sharePi } from "@/lib/client/types";
+import { explorerTx, fmt, openExternal, shareUrl, sharePi } from "@/lib/client/types";
 
 export type PublicDonation = {
   id: string;
@@ -94,9 +94,9 @@ export default function ReceiptPage() {
             <div className="border-t border-dashed border-line pt-2.5">
               <dt className="text-muted">{t("tx")}</dt>
               <dd>
-                <a className="num block truncate text-xs text-brand underline" dir="ltr" href={`https://blockexplorer.minepi.com/mainnet/transactions/${d.txid}`} target="_blank" rel="noreferrer">
+                <button className="num block w-full truncate text-start text-xs text-brand underline" dir="ltr" onClick={() => openExternal(explorerTx(d.txid!))}>
                   {d.txid}
-                </a>
+                </button>
               </dd>
             </div>
           )}

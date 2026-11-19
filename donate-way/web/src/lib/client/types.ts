@@ -81,3 +81,12 @@ export function sharePi(title: string, text: string, url: string) {
   else if (navigator.share) navigator.share({ title, text, url }).catch(() => undefined);
   else navigator.clipboard?.writeText(url).catch(() => undefined);
 }
+
+// Opens a link outside the app. Inside Pi Browser this uses the SDK (system browser), as the
+// Mainnet listing guidelines ask apps not to navigate users away inside the app.
+export function openExternal(url: string) {
+  if (typeof window === "undefined") return;
+  if (window.Pi?.openUrlInSystemBrowser) window.Pi.openUrlInSystemBrowser(url).catch(() => window.open(url, "_blank", "noopener"));
+  else window.open(url, "_blank", "noopener");
+}
+export const explorerTx = (txid: string) => `https://blockexplorer.minepi.com/mainnet/transactions/${txid}`;

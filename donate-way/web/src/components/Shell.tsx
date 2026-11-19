@@ -45,6 +45,9 @@ export function Shell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-dvh flex-col">
+      <a href="#main" className="sr-only z-50 rounded-xl bg-brand px-4 py-2 font-bold text-brand-ink focus:not-sr-only focus:fixed focus:start-4 focus:top-4">
+        {t("skip_to_content")}
+      </a>
       <header className="sticky top-0 z-30 border-b border-line bg-bg/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-2.5 sm:px-6">
           <Link href="/" className="flex items-baseline gap-2 text-2xl font-bold" aria-label={t("app_name")}>
@@ -88,7 +91,7 @@ export function Shell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      <main key={path} className="page-in mx-auto w-full max-w-6xl flex-1 px-4 pb-32 pt-4 sm:px-6 lg:pb-12 lg:pt-8">
+      <main id="main" tabIndex={-1} key={path} className="page-in mx-auto w-full max-w-6xl flex-1 px-4 pb-32 pt-4 sm:px-6 lg:pb-12 lg:pt-8">
         {children}
       </main>
 

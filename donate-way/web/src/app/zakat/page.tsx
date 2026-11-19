@@ -41,7 +41,10 @@ function GoldMeter({ grams, nisab }: { grams: number; nisab: number }) {
 
 export default function ZakatPage() {
   const { t, lang } = useLang();
-  const { api, user, signIn, ready } = usePi();
+  const { api, user, signIn, ready, linkWallet } = usePi();
+  const [noWallet, setNoWallet] = useState(false);
+  const [manual, setManual] = useState("");
+  const [walletMsg, setWalletMsg] = useState<string | null>(null);
   const [z, setZ] = useState<Zakat | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -56,7 +59,11 @@ export default function ZakatPage() {
     setError(null);
     api<Zakat>("/api/zakat")
       .then(setZ)
-      .catch((e) => setError(e instanceof ApiError && e.message === "no_wallet" ? t("zakat_no_wallet") : t("error_generic")))
+      .then(() => setNoWallet(false))
+      .catch((e) => {
+        if (e instanceof ApiError && e.message === "no_wallet") setNoWallet(true);
+        else setError(t("error_generic"));
+      })
       .finally(() => setLoading(false));
   }, [api, user, t]);
 
@@ -104,6 +111,44 @@ export default function ZakatPage() {
         </div>
       )}
       {error && <p className="card p-4 text-sm text-danger">{error}</p>}
+
+      {user && noWallet && (
+        <section className="card fade-in space-y-3 p-5">
+          <p className="flex items-start gap-2 text-sm text-muted">
+            <Icon name="wallet" size={18} className="mt-0.5 shrink-0 text-brand" /> {t("zakat_no_wallet")}
+          </p>
+          <button
+            className="btn btn-primary w-full"
+            onClick={async () => {
+              setWalletMsg(null);
+              const ok = await linkWallet().catch(() => false);
+              if (ok) load();
+              else setWalletMsg(t("wallet_invalid"));
+            }}
+          >
+            <Icon name="wallet" size={18} /> {t("wallet_read")}
+          </button>
+          <label className="block text-sm">
+            <span className="mb-1 block text-xs text-muted">{t("wallet_manual")}</span>
+            <div className="flex gap-2">
+              <input className="input num" dir="ltr" placeholder="G…" value={manual} onChange={(e) => setManual(e.target.value.trim().toUpperCase())} />
+              <button
+                className="btn btn-ghost"
+                disabled={!/^G[A-Z2-7]{55}$/.test(manual)}
+                onClick={async () => {
+                  setWalletMsg(null);
+                  const ok = await linkWallet(manual).catch(() => false);
+                  if (ok) load();
+                  else setWalletMsg(t("wallet_invalid"));
+                }}
+              >
+                {t("wallet_save")}
+              </button>
+            </div>
+          </label>
+          {walletMsg && <p className="text-sm text-danger">{walletMsg}</p>}
+        </section>
+      )}
 
       {z && (
         <>

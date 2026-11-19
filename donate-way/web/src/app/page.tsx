@@ -117,7 +117,7 @@ export default function HomePage() {
           <Link href={`/campaigns/${urgent.id}`} className="card group grid overflow-hidden sm:grid-cols-2">
             <div className="relative">
               <Cover src={urgent.cover_url} sizes="(min-width:640px) 50vw, 100vw" priority className="aspect-[16/10] h-full sm:aspect-auto sm:min-h-64" />
-              <span className="absolute start-3 top-3 rounded-full bg-danger px-3 py-1 text-xs font-bold text-white">{t("urgent")}</span>
+              <span className="absolute start-3 top-3 rounded-full bg-danger px-3 py-1 text-xs font-bold text-brand-ink">{t("urgent")}</span>
             </div>
             <div className="flex flex-col justify-center gap-3 p-5 sm:p-7">
               <h2 className="text-xl font-bold leading-snug sm:text-2xl">{urgent.title}</h2>

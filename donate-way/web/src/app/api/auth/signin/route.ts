@@ -34,6 +34,7 @@ export const POST = handler(async (request) => {
     await db().from("dw_users").select("referral_code,wallet_address").eq("pi_uid", me.uid).maybeSingle()
   ) as { referral_code: string | null; wallet_address: string | null } | null;
 
+  const code = existing?.referral_code ?? newCode();
   let referredBy: string | null = null;
   if (!existing && typeof body.ref === "string" && /^[a-z0-9]{6,12}$/.test(body.ref)) {
     const { data } = await db().from("dw_users").select("pi_uid").eq("referral_code", body.ref).maybeSingle();
@@ -49,7 +50,7 @@ export const POST = handler(async (request) => {
           username,
           last_seen_at: new Date().toISOString(),
           wallet_address: wallet ?? existing?.wallet_address ?? null,
-          referral_code: existing?.referral_code ?? newCode(),
+          referral_code: code,
           ...(referredBy ? { referred_by: referredBy } : {}),
         },
         { onConflict: "pi_uid" }
@@ -58,6 +59,11 @@ export const POST = handler(async (request) => {
 
   return json({
     token: createSession(me.uid, username),
-    user: { username, isAdmin: await isAdmin(me.uid), hasWallet: !!(wallet ?? existing?.wallet_address) },
+    user: {
+      username,
+      isAdmin: await isAdmin(me.uid),
+      hasWallet: !!(wallet ?? existing?.wallet_address),
+      referralCode: code,
+    },
   });
 });

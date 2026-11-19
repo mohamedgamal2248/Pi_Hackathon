@@ -225,6 +225,25 @@ const ar = {
   fund_general: "الصندوق العام",
   fund_zakat: "صندوق الزكاة",
   saved: "اتحفظ",
+  view_photo: "عرض الصورة",
+  skip_to_content: "انتقل للمحتوى",
+  sign_out: "تسجيل الخروج",
+  invite_friend: "ادعُ صاحبك",
+  invite_text: "اتبرعت على سند، عطاء موثّق وشفاف بـ Pi. جرّبه من هنا:",
+  wallet_read: "اقرا محفظتي",
+  wallet_manual: "أو الصق عنوان محفظتك العام (بيبدأ بـ G)",
+  wallet_save: "احفظ",
+  wallet_invalid: "العنوان غلط. لازم يبدأ بـ G وطوله 56 حرف.",
+  pay_wallet_missing: "الدفع لسه مش متاح: محفظة التطبيق بتتجهّز. جرّب تاني بعد شوية.",
+  m_active_1d: "نشطين النهارده",
+  m_active_7d: "نشطين الأسبوع",
+  m_active_30d: "نشطين الشهر",
+  m_new_7d: "مستخدمين جداد (7 أيام)",
+  m_returning: "متبرعين رجعوا تاني",
+  m_retention: "نسبة الرجوع",
+  m_referrals: "تبرعات من روابط السفراء",
+  m_streaks: "سلاسل نشطة",
+  engagement: "التفاعل",
   submit_post: "انشر",
 
   b_first: "أول خطوة",
@@ -464,6 +483,25 @@ const en: Dict = {
   fund_general: "General fund",
   fund_zakat: "Zakat fund",
   saved: "Saved",
+  view_photo: "View photo",
+  skip_to_content: "Skip to content",
+  sign_out: "Sign out",
+  invite_friend: "Invite a friend",
+  invite_text: "I just gave on Sanad, verified and transparent giving with Pi. Try it here:",
+  wallet_read: "Read my wallet",
+  wallet_manual: "Or paste your public wallet address (starts with G)",
+  wallet_save: "Save",
+  wallet_invalid: "Invalid address. It must start with G and be 56 characters.",
+  pay_wallet_missing: "Payments aren't available yet: the app wallet is being set up. Please try again later.",
+  m_active_1d: "Active today",
+  m_active_7d: "Active this week",
+  m_active_30d: "Active this month",
+  m_new_7d: "New users (7 days)",
+  m_returning: "Returning donors",
+  m_retention: "Retention",
+  m_referrals: "Gifts via ambassador links",
+  m_streaks: "Active streaks",
+  engagement: "Engagement",
   submit_post: "Publish",
 
   b_first: "First step",
@@ -489,8 +527,10 @@ export function LangProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const saved = localStorage.getItem("sanad_lang");
+      // First visit: follow the device language (Arabic devices get Arabic, everyone else English).
+      const device = (navigator.languages?.[0] ?? navigator.language ?? "").toLowerCase().startsWith("ar") ? "ar" : "en";
       // eslint-disable-next-line react-hooks/set-state-in-effect -- restore saved preference after hydration
-      if (saved === "en" || saved === "ar") setLangState(saved);
+      setLangState(saved === "en" || saved === "ar" ? saved : device);
     } catch {}
   }, []);
 

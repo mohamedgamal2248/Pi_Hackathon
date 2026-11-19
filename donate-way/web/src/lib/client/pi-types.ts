@@ -19,6 +19,11 @@ export type PiSDK = {
   authenticate: (scopes: string[], onIncompletePaymentFound: (p: PiPaymentDTO) => void) => Promise<PiAuthResult>;
   createPayment: (data: { amount: number; memo: string; metadata: Record<string, unknown> }, cb: PiCallbacks) => void;
   openShareDialog?: (title: string, message: string) => void;
+  openUrlInSystemBrowser?: (url: string) => Promise<void>;
+  Wallet?: {
+    getUserMigratedWalletAddresses?: () => Promise<{ wallets: { publicKey: string }[] }>;
+    getUserWalletAddresses?: () => Promise<{ wallets: { publicKey: string }[] }>;
+  };
   Ads?: {
     showAd: (type: "interstitial" | "rewarded") => Promise<{ result: string; adId?: string }>;
     isAdReady: (type: "interstitial" | "rewarded") => Promise<{ ready: boolean }>;

@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import type { PiPaymentDTO } from "./pi-types";
 
-export type SessionUser = { username: string; isAdmin: boolean; hasWallet: boolean };
+export type SessionUser = { username: string; isAdmin: boolean; hasWallet: boolean; referralCode: string | null };
 
 export type DonationItem = { campaignId: string | null; fund?: "general" | "zakat" | null; amount: number };
 export type DonateArgs = {
@@ -23,6 +23,8 @@ type Ctx = {
   api: <T>(path: string, init?: RequestInit) => Promise<T>;
   donate: (args: DonateArgs) => Promise<{ txid: string; donationId: string }>;
   refCode: string | null;
+  linkWallet: (manual?: string) => Promise<boolean>;
+  signOut: () => void;
 };
 
 const PiContext = createContext<Ctx | null>(null);
@@ -64,6 +66,7 @@ export function PiProvider({ children }: { children: ReactNode }) {
   const sdkAuthenticated = useRef(false);
   const signInPromise = useRef<Promise<SessionUser | null> | null>(null);
   const pendingIncomplete = useRef<string | null>(null);
+  const linkWalletRef = useRef<((manual?: string) => Promise<boolean>) | null>(null);
 
   const api = useCallback(async <T,>(path: string, init: RequestInit = {}): Promise<T> => {
     const headers = new Headers(init.headers);
@@ -98,6 +101,7 @@ export function PiProvider({ children }: { children: ReactNode }) {
         });
         token.current = res.token;
         setUser(res.user);
+        if (!res.user.hasWallet) linkWalletRef.current?.().catch(() => undefined);
         if (pendingIncomplete.current) {
           const paymentId = pendingIncomplete.current;
           pendingIncomplete.current = null;
@@ -187,7 +191,40 @@ export function PiProvider({ children }: { children: ReactNode }) {
     [api, signIn]
   );
 
-  return <PiContext.Provider value={{ ready, user, signingIn, signIn, api, donate, refCode }}>{children}</PiContext.Provider>;
+  // Saves the user's wallet address (public key) for the zakat calculator. Read from the Pi SDK
+  // (wallet_address permission, asked once at sign-in); a pasted public address is the fallback.
+  const linkWallet = useCallback(
+    async (manual?: string) => {
+      let address = manual?.trim() || null;
+      if (!address && window.Pi?.Wallet) {
+        const w = window.Pi.Wallet;
+        const res = await (w.getUserMigratedWalletAddresses ?? w.getUserWalletAddresses)?.call(w).catch(() => null);
+        address = res?.wallets?.[0]?.publicKey ?? null;
+      }
+      if (!address || !/^G[A-Z2-7]{55}$/.test(address)) return false;
+      await api("/api/me/wallet", { method: "POST", body: JSON.stringify({ address }) });
+      setUser((u) => (u ? { ...u, hasWallet: true } : u));
+      return true;
+    },
+    [api]
+  );
+  useEffect(() => {
+    linkWalletRef.current = linkWallet;
+  }, [linkWallet]);
+
+  // Ends the session in Sanad (Pi has no sign-out API; the next sign-in asks Pi again).
+  const signOut = useCallback(() => {
+    token.current = null;
+    sdkAuthenticated.current = false;
+    try {
+      localStorage.removeItem(CONSENT_KEY);
+    } catch {}
+    setUser(null);
+  }, []);
+
+  return (
+    <PiContext.Provider value={{ ready, user, signingIn, signIn, api, donate, refCode, linkWallet, signOut }}>{children}</PiContext.Provider>
+  );
 }
 
 export function usePi() {

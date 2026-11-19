@@ -1,12 +1,12 @@
 "use client";
 
-import Image from "next/image";
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { Cover, Progress, StatusBadge } from "@/components/CampaignCard";
 import { DonateSheet } from "@/components/DonateSheet";
 import { Icon } from "@/components/Icon";
 import { Money } from "@/components/Money";
+import { PhotoGrid } from "@/components/Lightbox";
 import { MonthlySadaqa } from "@/components/MonthlySadaqa";
 import { Portal } from "@/components/Portal";
 import { useCart } from "@/lib/client/cart";
@@ -152,15 +152,7 @@ function CampaignView() {
                 <iframe src={video} className="h-full w-full" allowFullScreen title="video" loading="lazy" />
               </div>
             )}
-            {!!c.gallery?.length && (
-              <div className="grid grid-cols-3 gap-2">
-                {c.gallery.map((g) => (
-                  <div key={g} className="relative aspect-square overflow-hidden rounded-xl">
-                    <Image src={g} alt="" fill sizes="200px" className="object-cover" />
-                  </div>
-                ))}
-              </div>
-            )}
+            {!!c.gallery?.length && <PhotoGrid images={c.gallery} />}
           </div>
         )}
 
@@ -182,15 +174,7 @@ function CampaignView() {
                       {t("spent")}: <b className="num">{pi(u.amount_spent)}</b>
                     </p>
                   )}
-                  {u.media.length > 0 && (
-                    <div className="grid grid-cols-3 gap-2">
-                      {u.media.map((m) => (
-                        <a key={m} href={m} target="_blank" rel="noreferrer" className="relative aspect-square overflow-hidden rounded-xl">
-                          <Image src={m} alt="" fill sizes="200px" className="object-cover" />
-                        </a>
-                      ))}
-                    </div>
-                  )}
+                  {u.media.length > 0 && <PhotoGrid images={u.media} />}
                 </div>
               </li>
             ))}

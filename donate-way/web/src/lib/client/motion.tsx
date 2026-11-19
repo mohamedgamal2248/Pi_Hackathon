@@ -65,7 +65,7 @@ export function Reveal({ children, className = "", delay = 0, as: Tag = "div" }:
 // A light confetti burst made of CSS-animated dots (no library).
 export function Confetti() {
   if (reduced()) return null;
-  const colors = ["#c6f432", "#b9a8ff", "#eef3f1", "#7b61ff"];
+  const colors = ["#c6f432", "#67e8f9", "#eef3f1", "#22d3ee"];
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
       {Array.from({ length: 28 }).map((_, i) => (
