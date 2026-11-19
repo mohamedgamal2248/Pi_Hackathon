@@ -27,7 +27,9 @@ export const POST = handler(async (request) => {
   const username = me.username ?? `pioneer-${me.uid.slice(0, 6)}`;
   // Wallet address: from Pi's /me when it returns it, else from the SDK's auth result. It is only used to
   // read public balances for the zakat calculator, never to send funds.
-  const fromPi = (me as { wallet_address?: string }).wallet_address;
+  const meAny = me as { wallet_address?: string; walletAddress?: string; credentials?: { scopes?: string[] } };
+  const fromPi = meAny.wallet_address ?? meAny.walletAddress;
+  console.info("signin", { keys: Object.keys(me), scopes: meAny.credentials?.scopes ?? null, piWallet: !!fromPi, clientWallet: !!body.walletAddress });
   const wallet = [fromPi, body.walletAddress].find((w) => typeof w === "string" && WALLET_RE.test(w)) ?? null;
 
   const existing = must(

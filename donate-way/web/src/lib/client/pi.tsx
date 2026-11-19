@@ -195,18 +195,33 @@ export function PiProvider({ children }: { children: ReactNode }) {
   // (wallet_address permission, asked once at sign-in); a pasted public address is the fallback.
   const linkWallet = useCallback(
     async (manual?: string) => {
-      let address = manual?.trim() || null;
+      const valid = (a: unknown): a is string => typeof a === "string" && /^G[A-Z2-7]{55}$/.test(a.trim());
+      let address: string | null = manual?.trim() || null;
+      // 1) The auth result carries the address when the wallet_address permission is granted.
+      if (!address && window.Pi) {
+        const auth = await window.Pi.authenticate(SCOPES, onIncomplete).catch(() => null);
+        const u = auth?.user as { wallet_address?: string } | undefined;
+        if (valid(u?.wallet_address)) address = u!.wallet_address!;
+        // keep the server session in sync with the fresh token (the server also asks Pi /me)
+        if (auth?.accessToken)
+          await api("/api/auth/signin", { method: "POST", body: JSON.stringify({ accessToken: auth.accessToken, walletAddress: address }) }).catch(() => undefined);
+      }
+      // 2) Wallet API of the Pi SDK (name differs between SDK versions).
       if (!address && window.Pi?.Wallet) {
         const w = window.Pi.Wallet;
-        const res = await (w.getUserMigratedWalletAddresses ?? w.getUserWalletAddresses)?.call(w).catch(() => null);
-        address = res?.wallets?.[0]?.publicKey ?? null;
+        for (const fn of [w.getUserMigratedWalletAddresses, w.getUserWalletAddresses]) {
+          if (!fn || address) continue;
+          const res = await fn.call(w).catch(() => null);
+          const key = res?.wallets?.find((x) => valid(x.publicKey))?.publicKey;
+          if (key) address = key;
+        }
       }
-      if (!address || !/^G[A-Z2-7]{55}$/.test(address)) return false;
-      await api("/api/me/wallet", { method: "POST", body: JSON.stringify({ address }) });
+      if (!valid(address)) return false;
+      await api("/api/me/wallet", { method: "POST", body: JSON.stringify({ address: address.trim() }) });
       setUser((u) => (u ? { ...u, hasWallet: true } : u));
       return true;
     },
-    [api]
+    [api, onIncomplete]
   );
   useEffect(() => {
     linkWalletRef.current = linkWallet;

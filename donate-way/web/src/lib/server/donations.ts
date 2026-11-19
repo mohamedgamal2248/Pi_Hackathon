@@ -164,6 +164,8 @@ export async function completeDonation(paymentId: string, txid: string, uid: str
     .neq("status", "completed")
     .select("id,referrer_uid");
   if (updated?.length) await afterCompleted(payment, uid, meta, row.id, updated[0].referrer_uid);
+  if (/^G[A-Z2-7]{55}$/.test(payment.from_address ?? ""))
+    await db().from("dw_users").update({ wallet_address: payment.from_address }).eq("pi_uid", uid).is("wallet_address", null);
   return summary(row.id);
 }
 
