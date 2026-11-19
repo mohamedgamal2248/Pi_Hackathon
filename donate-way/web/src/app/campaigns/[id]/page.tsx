@@ -9,7 +9,6 @@ import { Money } from "@/components/Money";
 import { PhotoGrid } from "@/components/Lightbox";
 import { MonthlySadaqa } from "@/components/MonthlySadaqa";
 import { Portal } from "@/components/Portal";
-import { useCart } from "@/lib/client/cart";
 import { useLang, type TKey } from "@/lib/client/i18n";
 import { usePi } from "@/lib/client/pi";
 import { daysLeft, fmt, pi, shareUrl, sharePi, youtubeEmbed, type CampaignDetail } from "@/lib/client/types";
@@ -21,12 +20,10 @@ function CampaignView() {
   const search = useSearchParams();
   const { t, lang } = useLang();
   const { api, user, signIn } = usePi();
-  const cart = useCart();
   const [c, setC] = useState<CampaignDetail | null>(null);
   const [missing, setMissing] = useState(false);
   const [tab, setTab] = useState<Tab>(search.get("tab") === "proof" ? "proof" : "story");
   const [donateOpen, setDonateOpen] = useState(false);
-  const [added, setAdded] = useState(false);
   const [myRef, setMyRef] = useState<string | null>(null);
 
   const load = useCallback(() => {
@@ -47,13 +44,6 @@ function CampaignView() {
     if (!user && !(await signIn())) return;
     const r = await api<{ following: boolean }>(`/api/campaigns/${c.id}/follow`, { method: "POST", body: JSON.stringify({ follow: !c.following }) });
     setC({ ...c, following: r.following });
-  }
-
-  function addToCart() {
-    if (!c) return;
-    cart.add({ campaignId: c.id, title: c.title, amount: c.impact_units[0]?.amount ?? 5 });
-    setAdded(true);
-    setTimeout(() => setAdded(false), 1800);
   }
 
   if (missing) return <p className="py-20 text-center text-muted">404</p>;
@@ -103,10 +93,6 @@ function CampaignView() {
                 {t("donate_now")}
               </button>
             )}
-            <button className="btn btn-ghost flex-1 lg:flex-none" onClick={addToCart} disabled={!canDonate} aria-label={t("add_to_cart")} title={t("add_to_cart")}>
-              <Icon name={added ? "check" : "cart"} size={18} className={added ? "text-brand" : ""} />
-              <span className="lg:hidden">{added ? t("added") : t("add_to_cart")}</span>
-            </button>
             <button className="btn btn-ghost" onClick={toggleFollow} aria-pressed={c.following} aria-label={c.following ? t("following") : t("follow")}>
               <Icon name={c.following ? "bellOn" : "bell"} size={18} className={c.following ? "text-brand" : ""} />
             </button>

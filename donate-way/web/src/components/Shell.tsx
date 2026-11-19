@@ -6,7 +6,6 @@ import { useEffect, useState, type ReactNode } from "react";
 import { isStagingHost } from "@/lib/client/types";
 import { DonateSheet } from "@/components/DonateSheet";
 import { Icon, type IconName } from "@/components/Icon";
-import { useCart } from "@/lib/client/cart";
 import { useLang, type TKey } from "@/lib/client/i18n";
 import { usePi } from "@/lib/client/pi";
 
@@ -38,7 +37,6 @@ function LangToggle() {
 export function Shell({ children }: { children: ReactNode }) {
   const { t } = useLang();
   const { user, signIn, signingIn, ready } = usePi();
-  const cart = useCart();
   const path = usePathname();
   const [quick, setQuick] = useState(false);
   const [staging, setStaging] = useState(false);
@@ -81,12 +79,6 @@ export function Shell({ children }: { children: ReactNode }) {
 
           <div className="flex items-center gap-2">
             <LangToggle />
-            <button className="relative grid h-10 w-10 place-items-center rounded-full bg-surface-2" onClick={() => cart.setOpen(true)} aria-label={t("cart_title")}>
-              <Icon name="cart" size={19} />
-              {cart.items.length > 0 && (
-                <span className="pop absolute -end-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-brand px-1 text-[11px] font-bold text-brand-ink">{cart.items.length}</span>
-              )}
-            </button>
             {user ? (
               <Link href="/me" dir="ltr" className="chip hidden max-w-[10rem] truncate sm:inline-flex">
                 @{user.username}
@@ -153,7 +145,6 @@ export function Shell({ children }: { children: ReactNode }) {
       </nav>
 
       {quick && <DonateSheet target={{ kind: "fund", fund: "general", title: t("to_general") }} onClose={() => setQuick(false)} />}
-      {cart.open && <DonateSheet target={{ kind: "cart" }} onClose={() => cart.setOpen(false)} />}
     </div>
   );
 }

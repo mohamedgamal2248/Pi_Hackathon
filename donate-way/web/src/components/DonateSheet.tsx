@@ -5,7 +5,6 @@ import { useMemo, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { Money } from "@/components/Money";
 import { Sheet } from "@/components/Sheet";
-import { useCart } from "@/lib/client/cart";
 import { useLang } from "@/lib/client/i18n";
 import { Confetti } from "@/lib/client/motion";
 import { ApiError, usePi, type DonationItem } from "@/lib/client/pi";
@@ -13,8 +12,8 @@ import { fmt, shareUrl, sharePi, type ImpactUnit } from "@/lib/client/types";
 
 export type DonateTarget =
   | { kind: "campaign"; id: string; title: string; impactUnits?: ImpactUnit[] }
-  | { kind: "fund"; fund: "general" | "zakat"; title: string }
-  | { kind: "cart" };
+  | { kind: "fund"; fund: "general" | "zakat"; title: string };
+
 
 const QUICK = [1, 5, 10, 25];
 const FEE = 0.05;
@@ -34,8 +33,6 @@ export function DonateSheet({
 }) {
   const { t } = useLang();
   const { donate, user, signIn, ready } = usePi();
-  const cart = useCart();
-  const isCart = target.kind === "cart";
   const units = target.kind === "campaign" ? target.impactUnits ?? [] : [];
 
   const [amount, setAmount] = useState(String(initialAmount ? Number(initialAmount.toFixed(4)) : units[0]?.amount ?? 5));
@@ -49,18 +46,17 @@ export function DonateSheet({
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<{ amount: number; txid: string; donationId: string } | null>(null);
 
-  const total = isCart ? cart.items.reduce((s, i) => s + i.amount, 0) : Number(amount);
+  const total = Number(amount);
   const valid = Number.isFinite(total) && total >= 0.01 && (!giftOn || giftName.trim().length > 0);
   const share = Math.round(total * (1 - FEE) * 1e7) / 1e7;
   const fee = Math.round((total - share) * 1e7) / 1e7;
-  const title = target.kind === "cart" ? t("cart_title") : target.title;
+  const title = target.title;
   const noSdk = ready && typeof window !== "undefined" && !window.Pi;
 
   const items: DonationItem[] = useMemo(() => {
-    if (target.kind === "cart") return cart.items.map((i) => ({ campaignId: i.campaignId, amount: i.amount }));
     if (target.kind === "campaign") return [{ campaignId: target.id, amount: Number(amount) }];
     return [{ campaignId: null, fund: target.fund, amount: Number(amount) }];
-  }, [target, cart.items, amount]);
+  }, [target, amount]);
 
   async function submit() {
     setBusy(true);
@@ -79,7 +75,6 @@ export function DonateSheet({
         gift: giftOn ? { type: giftType, name: giftName.trim(), note: giftNote.trim() || undefined } : null,
       });
       setDone({ amount: total, ...r });
-      if (isCart) cart.clear();
       onDone?.();
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -130,29 +125,7 @@ export function DonateSheet({
   return (
     <Sheet title={title} onClose={onClose}>
       <div className="space-y-4">
-        {isCart ? (
-          cart.items.length === 0 ? (
-            <p className="py-6 text-center text-muted">{t("cart_empty")}</p>
-          ) : (
-            <ul className="space-y-2">
-              {cart.items.map((i) => (
-                <li key={i.campaignId} className="flex items-center gap-2 rounded-2xl bg-surface-2 p-3">
-                  <span className="line-clamp-1 flex-1 text-sm">{i.title}</span>
-                  <input
-                    className="input num !min-h-10 w-24 !py-1 text-center"
-                    inputMode="decimal"
-                    aria-label={t("amount")}
-                    value={i.amount}
-                    onChange={(e) => cart.setAmount(i.campaignId, Number(e.target.value.replace(/[^0-9.]/g, "")) || 0)}
-                  />
-                  <button className="grid h-10 w-10 place-items-center rounded-full text-muted hover:text-danger" onClick={() => cart.remove(i.campaignId)} aria-label={t("remove")}>
-                    <Icon name="trash" size={18} />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )
-        ) : (
+        {(
           <>
             {units.length > 0 && (
               <div>
