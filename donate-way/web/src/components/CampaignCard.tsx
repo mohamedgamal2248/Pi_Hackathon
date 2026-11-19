@@ -1,5 +1,6 @@
 "use client";
 
+import { Icon } from "@/components/Icon";
 import Link from "next/link";
 import { useLang, type TKey } from "@/lib/client/i18n";
 import { daysLeft, pi, type Campaign } from "@/lib/client/types";
@@ -32,7 +33,7 @@ export function CampaignCard({ c }: { c: Campaign }) {
           // eslint-disable-next-line @next/next/no-img-element -- organizer-provided URLs from any host
           <img src={c.cover_url} alt="" className="h-full w-full object-cover" loading="lazy" />
         ) : (
-          <div className="grid h-full place-items-center text-4xl">🤲</div>
+          <div className="grid h-full place-items-center text-muted"><Icon name="heart" size={40} /></div>
         )}
         <div className="absolute start-3 top-3">
           <StatusBadge c={c} />

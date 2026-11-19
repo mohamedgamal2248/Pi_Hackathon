@@ -1,5 +1,6 @@
 "use client";
 
+import { Icon } from "@/components/Icon";
 import { useState } from "react";
 import { useLang } from "@/lib/client/i18n";
 import { ApiError, usePi } from "@/lib/client/pi";
@@ -38,7 +39,7 @@ export function DonateSheet({ campaignId, title, initialAmount, onClose, onDone 
         const r = await api<{ id: string }>("/api/recurring", { method: "POST", body: JSON.stringify({ amount: value, campaignId }) });
         recurringId = r.id;
       }
-      const { txid } = await donate({ amount: value, campaignId, memo: `Donate Way: ${title}`, anonymous, message, recurringId });
+      const { txid } = await donate({ amount: value, campaignId, memo: `Sanad: ${title}`, anonymous, message, recurringId });
       setDone({ amount: value, txid });
       onDone?.();
     } catch (e) {
@@ -57,14 +58,14 @@ export function DonateSheet({ campaignId, title, initialAmount, onClose, onDone 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
-      <div className="card w-full max-w-md rounded-b-none p-5 sm:rounded-b-[18px]" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center" onClick={onClose}>
+      <div className="card safe-bottom w-full max-w-md rounded-b-none p-5 sm:rounded-b-[20px]" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal>
         {done ? (
           <div className="space-y-4 py-4 text-center">
-            <div className="text-5xl">🤍</div>
+            <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-brand text-brand-ink"><Icon name="check" size={32} /></div>
             <h3 className="text-xl font-bold">{t("thanks_title")}</h3>
             <p className="text-muted">{t("thanks_body")}</p>
-            <p className="text-2xl font-bold text-brand">{pi(done.amount)}</p>
+            <p className="num text-4xl font-bold text-brand">{pi(done.amount)}</p>
             <a
               className="block truncate text-xs text-muted underline"
               href={`https://blockexplorer.minepi.com/mainnet/transactions/${done.txid}`}
@@ -87,7 +88,7 @@ export function DonateSheet({ campaignId, title, initialAmount, onClose, onDone 
             <div className="flex items-start justify-between gap-3">
               <h3 className="font-bold leading-snug">{title}</h3>
               <button onClick={onClose} className="text-muted" aria-label={t("close")}>
-                ✕
+                <Icon name="close" />
               </button>
             </div>
             <div className="grid grid-cols-4 gap-2">
@@ -108,7 +109,7 @@ export function DonateSheet({ campaignId, title, initialAmount, onClose, onDone 
             </label>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={monthly} onChange={(e) => setMonthly(e.target.checked)} />
-              {t("monthly")} 🔁
+              <Icon name="repeat" size={16} className="text-brand" /> {t("monthly")}
             </label>
             {error && <p className="text-sm text-danger">{error}</p>}
             <button className="btn btn-primary w-full text-lg" disabled={!valid || busy} onClick={submit}>

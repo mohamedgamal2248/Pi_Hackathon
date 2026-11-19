@@ -1,4 +1,4 @@
-export const metadata = { title: "Privacy Policy · Donate Way" };
+export const metadata = { title: "Privacy Policy · Sanad" };
 
 export default function Privacy() {
   return (
@@ -6,7 +6,7 @@ export default function Privacy() {
       <h1 className="text-xl font-bold">Privacy Policy</h1>
       <p>Last updated: November 2026.</p>
       <p>
-        Donate Way is a donation app that runs in the Pi Browser. When you sign in with Pi, we receive your Pi username and an
+        Sanad is a donation app that runs in the Pi Browser. When you sign in with Pi, we receive your Pi username and an
         app-specific user ID from Pi Network. We do not receive your wallet passphrase, email, or phone number.
       </p>
       <h2 className="font-bold">What we store</h2>
@@ -23,7 +23,7 @@ export default function Privacy() {
       </p>
       <h2 className="font-bold">Sharing</h2>
       <p>
-        We do not sell personal data. Donations are recorded on the Pi blockchain, which is public. Organizer documents are only visible to Donate Way
+        We do not sell personal data. Donations are recorded on the Pi blockchain, which is public. Organizer documents are only visible to Sanad
         administrators.
       </p>
       <h2 className="font-bold">Your choices</h2>

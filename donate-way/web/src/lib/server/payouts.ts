@@ -32,7 +32,7 @@ export async function payTranche(trancheId: string) {
   if (!paymentId) {
     paymentId = await pi.createPayment({
       amount: Number(tranche.amount),
-      memo: `Donate Way: ${tranche.dw_campaigns.title}`.slice(0, 120),
+      memo: `Sanad: ${tranche.dw_campaigns.title}`.slice(0, 120),
       metadata: { kind: "tranche", trancheId: tranche.id, campaignId: tranche.campaign_id },
       uid: tranche.dw_campaigns.organizer_uid,
     });

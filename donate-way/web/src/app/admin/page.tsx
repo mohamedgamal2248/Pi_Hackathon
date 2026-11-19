@@ -107,7 +107,7 @@ export default function AdminPage() {
               {tr.dw_campaigns?.title}
             </Link>
             <p>
-              {pi(Number(tr.amount))} · {tr.status} {tr.proof_update_id ? "· 🧾 proof attached" : ""}
+              {pi(Number(tr.amount))} · {tr.status} {tr.proof_update_id ? "· proof attached" : ""}
             </p>
             <div className="flex gap-2 pt-1">
               <button className="btn btn-gold !py-1.5 text-xs" disabled={busy === tr.id} onClick={() => act("tranche", tr.id, "pay")}>

@@ -1,5 +1,6 @@
 "use client";
 
+import { Icon } from "@/components/Icon";
 import { useState } from "react";
 import { useLang } from "@/lib/client/i18n";
 import { ApiError, usePi } from "@/lib/client/pi";
@@ -54,8 +55,8 @@ export function OrganizerTools({ campaign, onChange }: { campaign: CampaignDetai
   }
 
   return (
-    <div className="card space-y-4 border-gold p-5">
-      <h3 className="font-bold">🛠 {t("post_update")}</h3>
+    <div className="card space-y-4 !border-gold/40 p-5">
+      <h3 className="flex items-center gap-2 font-bold"><Icon name="receipt" className="text-gold" /> {t("post_update")}</h3>
       <input className="input" placeholder={t("update_title")} value={title} onChange={(e) => setTitle(e.target.value)} />
       <textarea className="input" rows={3} placeholder={t("update_body")} value={body} onChange={(e) => setBody(e.target.value)} />
       <textarea className="input" rows={2} placeholder={t("media_urls")} value={media} onChange={(e) => setMedia(e.target.value)} dir="ltr" />
@@ -69,7 +70,7 @@ export function OrganizerTools({ campaign, onChange }: { campaign: CampaignDetai
       </button>
 
       <hr className="border-line" />
-      <h3 className="font-bold">💸 {t("request_tranche")}</h3>
+      <h3 className="flex items-center gap-2 font-bold"><Icon name="share" className="text-brand" /> {t("request_tranche")}</h3>
       <p className="text-sm text-muted">
         {t("available")}: <b className="text-brand">{pi(available)}</b>
       </p>

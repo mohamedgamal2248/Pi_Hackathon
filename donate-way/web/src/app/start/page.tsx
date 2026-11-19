@@ -1,5 +1,6 @@
 "use client";
 
+import { Icon } from "@/components/Icon";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { StatusBadge } from "@/components/CampaignCard";
@@ -104,7 +105,7 @@ export default function StartPage() {
 
       {status === "approved" && (
         <div className="card space-y-3 p-5">
-          <h1 className="text-xl font-bold">➕ {t("new_campaign")}</h1>
+          <h1 className="flex items-center gap-2 text-xl font-bold"><Icon name="plus" className="text-brand" /> {t("new_campaign")}</h1>
           <input className="input" placeholder={t("title")} value={form.title ?? ""} onChange={set("title")} maxLength={120} />
           <input className="input" placeholder={t("summary")} value={form.summary ?? ""} onChange={set("summary")} maxLength={280} />
           <textarea className="input" rows={6} placeholder={t("story")} value={form.story ?? ""} onChange={set("story")} />

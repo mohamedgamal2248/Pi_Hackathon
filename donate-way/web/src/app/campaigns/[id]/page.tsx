@@ -1,5 +1,6 @@
 "use client";
 
+import { Icon } from "@/components/Icon";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Progress, StatusBadge } from "@/components/CampaignCard";
@@ -54,14 +55,14 @@ export default function CampaignPage() {
   const date = (s: string) => new Date(s).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-GB");
 
   return (
-    <div className="space-y-5">
-      <div className="card overflow-hidden">
-        <div className="relative aspect-[16/9] bg-surface-2">
+    <div className="space-y-5 pb-20 lg:grid lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start lg:gap-6 lg:space-y-0 lg:pb-0">
+      <div className="card overflow-hidden lg:sticky lg:top-24 lg:col-start-2 lg:row-start-1">
+        <div className="relative aspect-[16/9] max-h-[340px] w-full bg-surface-2">
           {c.cover_url ? (
             // eslint-disable-next-line @next/next/no-img-element -- organizer-provided URLs from any host
             <img src={c.cover_url} alt="" className="h-full w-full object-cover" />
           ) : (
-            <div className="grid h-full place-items-center text-6xl">🤲</div>
+            <div className="grid h-full place-items-center text-muted"><Icon name="heart" size={56} /></div>
           )}
           <div className="absolute start-3 top-3">
             <StatusBadge c={c} />
@@ -72,11 +73,11 @@ export default function CampaignPage() {
             {t(`cat_${c.category}` as TKey)} · {c.country}
             {left !== null && ` · ${left > 0 ? `${left} ${t("days_left")}` : t("ended")}`}
           </div>
-          <h1 className="text-xl font-bold leading-snug">{c.title}</h1>
+          <h1 className="text-xl font-bold leading-snug sm:text-2xl">{c.title}</h1>
           <p className="text-muted">{c.summary}</p>
           {c.organizer && (
             <div className="flex items-center gap-2 rounded-xl bg-brand-soft p-3 text-sm">
-              <span className="text-lg">✅</span>
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand text-brand-ink"><Icon name="check" size={18} /></span>
               <div>
                 <div className="font-bold">
                   {c.organizer.org ?? c.organizer.name} <span className="font-normal text-muted">@{c.organizer.username}</span>
@@ -88,39 +89,41 @@ export default function CampaignPage() {
           <Progress raised={c.raised} goal={c.goal} />
           <div className="grid grid-cols-3 gap-2 text-center text-sm">
             <div>
-              <b className="block text-lg text-brand">{pi(c.raised)}</b>
+              <b className="num block text-xl text-brand">{pi(c.raised)}</b>
               <span className="text-muted">
                 {t("of_goal")} {pi(c.goal)}
               </span>
             </div>
             <div>
-              <b className="block text-lg">{c.donors}</b>
+              <b className="num block text-xl">{c.donors}</b>
               <span className="text-muted">{t("donors")}</span>
             </div>
             <div>
-              <b className="block text-lg text-gold">{pi(c.released)}</b>
+              <b className="num block text-xl text-gold">{pi(c.released)}</b>
               <span className="text-muted">{t("released")}</span>
             </div>
           </div>
           <div className="flex gap-2">
             {canDonate && (
-              <button className="btn btn-primary flex-1 text-lg" onClick={() => setDonateOpen(true)}>
+              <button className="btn btn-primary hidden flex-1 text-lg lg:flex" onClick={() => setDonateOpen(true)}>
                 {t("donate_now")}
               </button>
             )}
-            <button className="btn btn-ghost" onClick={toggleFollow}>
+            <button className="btn btn-ghost flex-1 lg:flex-none" onClick={toggleFollow} aria-pressed={c.following}>
+              <Icon name={c.following ? "bellOn" : "bell"} size={18} className={c.following ? "text-brand" : ""} />
               {c.following ? t("following") : t("follow")}
             </button>
             <button className="btn btn-ghost" onClick={share} aria-label={t("share")}>
-              ↗
+              <Icon name="share" size={18} />
             </button>
           </div>
         </div>
       </div>
 
+      <div className="space-y-5 lg:col-start-1 lg:row-start-1">
       <div className="flex gap-2">
         {(["story", "transparency", "donors"] as Tab[]).map((k) => (
-          <button key={k} className="chip flex-1" data-active={tab === k} onClick={() => setTab(k)}>
+          <button key={k} className="chip flex-1 justify-center" data-active={tab === k} onClick={() => setTab(k)}>
             {t(k === "donors" ? "donors_list" : k)}
           </button>
         ))}
@@ -192,7 +195,7 @@ export default function CampaignPage() {
                 <div className="card space-y-2 p-4">
                   <div className="flex items-center justify-between text-xs text-muted">
                     <span className={u.kind === "proof_of_spend" ? "font-bold text-gold" : ""}>
-                      {u.kind === "proof_of_spend" ? `🧾 ${t("proof_of_spend")}` : `📢 ${t("update")}`}
+                      {u.kind === "proof_of_spend" ? t("proof_of_spend") : t("update")}
                     </span>
                     <span>{date(u.created_at)}</span>
                   </div>
@@ -232,6 +235,16 @@ export default function CampaignPage() {
       )}
 
       {c.isOwner && <OrganizerTools campaign={c} onChange={load} />}
+
+      </div>
+
+      {canDonate && (
+        <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom)+0.5rem)] z-20 px-4 lg:hidden">
+          <button className="btn btn-primary w-full text-lg shadow-[0_8px_30px_rgba(0,0,0,0.45)]" onClick={() => setDonateOpen(true)}>
+            {t("donate_now")}
+          </button>
+        </div>
+      )}
 
       {donateOpen && <DonateSheet campaignId={c.id} title={c.title} onClose={() => setDonateOpen(false)} onDone={load} />}
     </div>

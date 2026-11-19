@@ -1,5 +1,6 @@
 "use client";
 
+import { Icon } from "@/components/Icon";
 import { useState } from "react";
 import { DonateSheet } from "@/components/DonateSheet";
 import { useLang } from "@/lib/client/i18n";
@@ -20,7 +21,7 @@ export default function ZakatPage() {
   return (
     <div className="space-y-5">
       <div className="card space-y-4 p-5">
-        <h1 className="text-xl font-bold">🧮 {t("zakat_title")}</h1>
+        <h1 className="flex items-center gap-2 text-xl font-bold"><Icon name="calc" className="text-brand" /> {t("zakat_title")}</h1>
         <p className="text-sm text-muted">{t("zakat_sub")}</p>
         <label className="block text-sm">
           <span className="mb-1 block text-muted">{t("zakat_assets")}</span>

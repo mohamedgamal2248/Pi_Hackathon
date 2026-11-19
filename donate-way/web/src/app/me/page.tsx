@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Icon } from "@/components/Icon";
 import { useCallback, useEffect, useState } from "react";
 import { DonateSheet } from "@/components/DonateSheet";
 import { useLang } from "@/lib/client/i18n";
@@ -18,15 +19,15 @@ type Me = {
   organizer: { status: string } | null;
 };
 
-function badges(me: Me) {
+function badges(me: Me, ar: boolean) {
   const list: string[] = [];
-  if (me.count >= 1) list.push("🌱");
-  if (me.count >= 5) list.push("🌿");
-  if (me.count >= 20) list.push("🌳");
-  if (me.total >= 100) list.push("💎");
-  if (me.campaignsHelped >= 5) list.push("🤝");
-  if (me.recurring.length > 0) list.push("🔁");
-  if (me.organizer?.status === "approved") list.push("✅");
+  if (me.count >= 1) list.push(ar ? "أول خطوة" : "First gift");
+  if (me.count >= 5) list.push(ar ? "سند دائم" : "Regular");
+  if (me.count >= 20) list.push(ar ? "عمود خير" : "Pillar");
+  if (me.total >= 100) list.push(ar ? "١٠٠ π+" : "100 π+");
+  if (me.campaignsHelped >= 5) list.push(ar ? "متعدد الأثر" : "Wide impact");
+  if (me.recurring.length > 0) list.push(ar ? "صدقة جارية" : "Monthly giver");
+  if (me.organizer?.status === "approved") list.push(ar ? "منظّم موثّق" : "Verified organizer");
   return list;
 }
 
@@ -77,7 +78,13 @@ export default function MePage() {
           <div className="grid h-14 w-14 place-items-center rounded-2xl bg-brand text-2xl font-bold text-brand-ink">{me.username[0]?.toUpperCase()}</div>
           <div>
             <h1 className="text-lg font-bold">@{me.username}</h1>
-            <div className="text-xl">{badges(me).join(" ") || "—"}</div>
+            <div className="mt-1 flex flex-wrap gap-1.5">
+              {badges(me, lang === "ar").map((b) => (
+                <span key={b} className="rounded-full bg-gold-soft px-2.5 py-1 text-xs font-bold text-gold">
+                  {b}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
         <div className="grid grid-cols-3 gap-2 text-center text-sm">
@@ -94,12 +101,12 @@ export default function MePage() {
             <span className="text-muted">{t("points")}</span>
           </div>
         </div>
-        <p className="text-xs text-muted">🪙 {t("points_note")}</p>
+        <p className="text-xs text-muted">{t("points_note")}</p>
       </div>
 
       {me.recurring.length > 0 && (
         <div className="card p-5">
-          <h2 className="mb-3 font-bold">🔁 {t("monthly_pledges")}</h2>
+          <h2 className="mb-3 flex items-center gap-2 font-bold"><Icon name="repeat" size={18} className="text-brand" /> {t("monthly_pledges")}</h2>
           <ul className="space-y-3">
             {me.recurring.map((r) => (
               <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
