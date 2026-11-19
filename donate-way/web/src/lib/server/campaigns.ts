@@ -85,7 +85,7 @@ export async function getCampaign(id: string, viewerUid?: string, includeHidden 
     db().from("dw_updates").select("id,kind,title,body,amount_spent,media,created_at").eq("campaign_id", id).order("created_at", { ascending: false }),
     db()
       .from("dw_donation_items")
-      .select("campaign_share,dw_donations!inner(anonymous,message,completed_at,status,dw_users!pi_uid(username))")
+      .select("campaign_share,dw_donations!inner(anonymous,message,completed_at,status,pi_uid)")
       .eq("campaign_id", id)
       .eq("dw_donations.status", "completed")
       .order("id", { ascending: false })
@@ -95,12 +95,13 @@ export async function getCampaign(id: string, viewerUid?: string, includeHidden 
       : Promise.resolve({ data: null }),
   ]);
 
+  const names = await usernames(((items.data ?? []) as unknown as { dw_donations: { pi_uid: string } }[]).map((d) => d.dw_donations.pi_uid));
   const recentDonors = ((items.data ?? []) as unknown as {
     campaign_share: number;
-    dw_donations: { anonymous: boolean; message: string | null; completed_at: string; dw_users: { username: string } | null };
+    dw_donations: { anonymous: boolean; message: string | null; completed_at: string; pi_uid: string };
   }[])
     .map((d) => ({
-      name: d.dw_donations.anonymous ? null : d.dw_donations.dw_users?.username ?? null,
+      name: d.dw_donations.anonymous ? null : names.get(d.dw_donations.pi_uid) ?? null,
       amount: Number(d.campaign_share),
       message: d.dw_donations.message,
       at: d.dw_donations.completed_at,
@@ -116,6 +117,14 @@ export async function getCampaign(id: string, viewerUid?: string, includeHidden 
 }
 
 const DAY = 86_400_000;
+
+// Usernames by Pi uid (separate query: donations have two foreign keys to users, which makes embeds ambiguous).
+export async function usernames(uids: (string | null | undefined)[]): Promise<Map<string, string>> {
+  const ids = [...new Set(uids.filter((u): u is string => !!u))];
+  if (!ids.length) return new Map();
+  const { data } = await db().from("dw_users").select("pi_uid,username").in("pi_uid", ids);
+  return new Map((data ?? []).map((u) => [u.pi_uid as string, u.username as string]));
+}
 
 export async function platformStats() {
   const { data } = await db().from("dw_donations").select("amount,campaign_share,platform_fee,pi_uid,completed_at").eq("status", "completed");
@@ -143,21 +152,23 @@ export async function platformStats() {
 export async function recentFeed(limit = 12) {
   const { data } = await db()
     .from("dw_donations")
-    .select("amount,anonymous,completed_at,gift,campaign_id,fund,dw_users!pi_uid(username),dw_campaigns(title)")
+    .select("amount,anonymous,completed_at,gift,campaign_id,fund,pi_uid,dw_campaigns(title)")
     .eq("status", "completed")
     .order("completed_at", { ascending: false })
     .limit(limit);
-  return ((data ?? []) as unknown as {
+  const rows = (data ?? []) as unknown as {
     amount: number;
     anonymous: boolean;
     completed_at: string;
     gift: { type: string } | null;
     campaign_id: string | null;
     fund: string | null;
-    dw_users: { username: string } | null;
+    pi_uid: string;
     dw_campaigns: { title: string } | null;
-  }[]).map((d) => ({
-    name: d.anonymous ? null : d.dw_users?.username ?? null,
+  }[];
+  const names = await usernames(rows.map((r) => r.pi_uid));
+  return rows.map((d) => ({
+    name: d.anonymous ? null : names.get(d.pi_uid) ?? null,
     amount: Number(d.amount),
     at: d.completed_at,
     gift: d.gift?.type ?? null,
@@ -186,12 +197,14 @@ export async function latestProofs(limit = 6) {
 }
 
 export async function leaderboard(limit = 10, sinceDays?: number) {
-  let q = db().from("dw_donations").select("amount,pi_uid,dw_users!pi_uid(username)").eq("status", "completed").eq("anonymous", false);
+  let q = db().from("dw_donations").select("amount,pi_uid").eq("status", "completed").eq("anonymous", false);
   if (sinceDays) q = q.gte("completed_at", new Date(Date.now() - sinceDays * DAY).toISOString());
   const { data } = await q;
+  const rows = (data ?? []) as unknown as { amount: number; pi_uid: string }[];
+  const names = await usernames(rows.map((r) => r.pi_uid));
   const totals = new Map<string, { username: string; total: number; count: number }>();
-  for (const row of (data ?? []) as unknown as { amount: number; pi_uid: string; dw_users: { username: string } | null }[]) {
-    const t = totals.get(row.pi_uid) ?? { username: row.dw_users?.username ?? "?", total: 0, count: 0 };
+  for (const row of rows) {
+    const t = totals.get(row.pi_uid) ?? { username: names.get(row.pi_uid) ?? "?", total: 0, count: 0 };
     t.total += Number(row.amount);
     t.count += 1;
     totals.set(row.pi_uid, t);
@@ -201,10 +214,12 @@ export async function leaderboard(limit = 10, sinceDays?: number) {
 
 // Ambassadors: people whose invite links brought the most completed donations.
 export async function topInviters(limit = 10) {
-  const { data } = await db().from("dw_donations").select("amount,referrer_uid,dw_users!referrer_uid(username)").eq("status", "completed").not("referrer_uid", "is", null);
+  const { data } = await db().from("dw_donations").select("amount,referrer_uid").eq("status", "completed").not("referrer_uid", "is", null);
+  const rows = (data ?? []) as unknown as { amount: number; referrer_uid: string }[];
+  const names = await usernames(rows.map((r) => r.referrer_uid));
   const totals = new Map<string, { username: string; total: number; count: number }>();
-  for (const row of (data ?? []) as unknown as { amount: number; referrer_uid: string; dw_users: { username: string } | null }[]) {
-    const t = totals.get(row.referrer_uid) ?? { username: row.dw_users?.username ?? "?", total: 0, count: 0 };
+  for (const row of rows) {
+    const t = totals.get(row.referrer_uid) ?? { username: names.get(row.referrer_uid) ?? "?", total: 0, count: 0 };
     t.total += Number(row.amount);
     t.count += 1;
     totals.set(row.referrer_uid, t);

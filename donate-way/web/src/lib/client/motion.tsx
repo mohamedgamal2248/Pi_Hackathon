@@ -4,31 +4,9 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 
 const reduced = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
-// Counts up from 0 to `value` when first shown.
-export function useCountUp(value: number, ms = 900) {
-  const [shown, setShown] = useState(0);
-  const from = useRef(0);
-  useEffect(() => {
-    if (reduced() || !Number.isFinite(value)) {
-      from.current = value;
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- jump straight to the value without animation
-      setShown(value);
-      return;
-    }
-    const start = performance.now();
-    const a = from.current;
-    let raf = 0;
-    const tick = (now: number) => {
-      const p = Math.min(1, (now - start) / ms);
-      const eased = 1 - Math.pow(1 - p, 3);
-      setShown(a + (value - a) * eased);
-      if (p < 1) raf = requestAnimationFrame(tick);
-      else from.current = value;
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [value, ms]);
-  return shown;
+// Numbers are shown as-is (the count-up animation made digits jitter on phones).
+export function useCountUp(value: number) {
+  return Number.isFinite(value) ? value : 0;
 }
 
 // Adds data-in="1" once the element scrolls into view; CSS (.reveal) animates it.

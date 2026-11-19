@@ -257,6 +257,8 @@ const ar = {
   b_ambassador: "سفير",
 
   // v3
+  streak_unit_days: "يوم ورا بعض",
+  streak_unit_weeks: "أسبوع ورا بعض",
   streak_days: "{n} يوم ورا بعض",
   streak_best: "أطول سلسلة: {n} يوم",
   daily_done: "تبرعت النهارده، سلسلتك محفوظة",
@@ -569,6 +571,8 @@ const en: Dict = {
   b_ambassador: "Ambassador",
 
   // v3
+  streak_unit_days: "days in a row",
+  streak_unit_weeks: "weeks in a row",
   streak_days: "{n}-day streak",
   streak_best: "Longest streak: {n} days",
   daily_done: "You gave today, streak kept",

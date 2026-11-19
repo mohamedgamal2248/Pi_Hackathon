@@ -87,7 +87,7 @@ export default function MePage() {
   const target = (d: Me["donations"][number]) => d.dw_campaigns?.title ?? (d.fund === "zakat" ? t("to_zakat") : d.fund === "general" ? t("to_general") : t("to_cart"));
 
   return (
-    <div className="stagger grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] [&>*]:min-w-0">
+    <div className="stagger grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] [&>*]:min-w-0 [&>section]:h-full">
       {/* Totals */}
       <section className="card space-y-4 p-5 lg:col-span-2">
         <div className="flex items-center gap-3">
@@ -128,42 +128,35 @@ export default function MePage() {
         <p className="text-xs text-muted">{t("points_note")}</p>
       </section>
 
-      {/* Daily streak + day badges */}
-      <section className="card space-y-3 p-5">
+      {/* Giving streak (daily + weekly) and day badges */}
+      <section className="card space-y-4 p-5">
         <h2 className="flex items-center gap-2 font-bold">
           <Icon name="flame" className="text-brand" /> {t("streak")}
         </h2>
-        <div className="flex items-end justify-between gap-2">
-          <div className="num text-4xl font-bold text-brand">{t("streak_days", { n: me.daily.days })}</div>
-          <div className="text-xs text-muted">{t("streak_best", { n: Math.max(me.daily.best, me.daily.days) })}</div>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-2xl bg-surface-2 p-3">
+            <div className="num text-3xl font-bold text-brand">{me.daily.days}</div>
+            <div className="text-xs text-muted">{t("streak_unit_days")}</div>
+          </div>
+          <div className="rounded-2xl bg-surface-2 p-3">
+            <div className="num text-3xl font-bold">{me.streak.weeks}</div>
+            <div className="text-xs text-muted">{t("streak_unit_weeks")}</div>
+          </div>
         </div>
         <p className={`text-sm ${me.daily.givenToday ? "text-brand" : "text-muted"}`}>{me.daily.givenToday ? t("daily_done") : t("daily_keep")}</p>
-        <div className="grid grid-cols-4 gap-2 pt-1">
+        <p className="text-xs text-muted">{t("streak_best", { n: Math.max(me.daily.best, me.daily.days) })}</p>
+        <div className="grid grid-cols-4 gap-2">
           {([3, 7, 30, 100] as const).map((n) => {
             const got = Math.max(me.daily.best, me.daily.days) >= n;
             return (
-              <div key={n} className={`rounded-2xl p-2 text-center ${got ? "bg-brand-soft text-brand" : "bg-surface-2 text-muted opacity-60"}`}>
-                <Icon name="award" size={22} className="mx-auto" />
-                <div className="mt-1 text-[11px] font-bold">{t(`badge_${n}` as TKey)}</div>
+              <div key={n} className={`flex flex-col items-center gap-1 rounded-2xl p-2 text-center ${got ? "bg-brand-soft text-brand" : "bg-surface-2 text-muted opacity-60"}`}>
+                <Icon name="award" size={22} />
+                <div className="text-[11px] font-bold leading-tight">{t(`badge_${n}` as TKey)}</div>
                 <div className="num text-[10px]">{t("badge_locked", { n })}</div>
               </div>
             );
           })}
         </div>
-      </section>
-
-      {/* Weekly streak */}
-      <section className="card space-y-3 p-5">
-        <h2 className="flex items-center gap-2 font-bold">
-          <Icon name="flame" className="text-brand" /> {t("streak")}
-        </h2>
-        <div className="num text-3xl font-bold">{t("streak_weeks", { n: me.streak.weeks })}</div>
-        <div className="flex gap-1.5" aria-hidden>
-          {Array.from({ length: 8 }).map((_, i) => (
-            <span key={i} className={`h-2.5 flex-1 rounded-full ${i < Math.min(8, me.streak.weeks) ? "bg-brand" : "bg-surface-2"}`} />
-          ))}
-        </div>
-        <p className={`text-sm ${me.streak.givenThisWeek ? "text-brand" : "text-muted"}`}>{me.streak.givenThisWeek ? t("streak_done") : t("streak_keep")}</p>
       </section>
 
       {/* Ambassador */}

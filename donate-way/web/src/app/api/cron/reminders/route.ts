@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { db } from "@/lib/server/db";
 import { env } from "@/lib/server/env";
 import { handler, HttpError, json } from "@/lib/server/http";
@@ -10,7 +11,9 @@ const DAY = 86_400_000;
 // Daily (vercel.json): zakat hawl reminders, and on Thursdays a nudge to keep the weekly giving streak.
 export const GET = handler(async (request) => {
   const secret = env.cronSecret();
-  if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) throw new HttpError(401, "unauthorized");
+  const given = Buffer.from(request.headers.get("authorization") ?? "");
+  const want = Buffer.from(`Bearer ${secret}`);
+  if (!secret || given.length !== want.length || !timingSafeEqual(given, want)) throw new HttpError(401, "unauthorized");
   const out: PiNotification[] = [];
   const today = new Date().toISOString().slice(0, 10);
 

@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { db } from "@/lib/server/db";
 import { env } from "@/lib/server/env";
-import { handler, HttpError, json, requireAdmin } from "@/lib/server/http";
+import { handler, HttpError, json, rateLimit, requireAdmin } from "@/lib/server/http";
 import { isTestnet } from "@/lib/server/network";
 
 const MAX_BYTES = 4 * 1024 * 1024;
@@ -17,7 +17,8 @@ function sniff(buf: Uint8Array): { ext: string; type: string } | null {
 // Admin-only image upload (campaign covers, proof-of-spend receipts) to the public "sanad" bucket.
 // The browser compresses the image to WebP first (lib/client/image.ts).
 export const POST = handler(async (request) => {
-  await requireAdmin(request);
+  const session = await requireAdmin(request);
+  rateLimit(`upload:${session.uid}`, 30, 60_000);
   const form = await request.formData().catch(() => null);
   const file = form?.get("file");
   if (!(file instanceof File)) throw new HttpError(400, "file_required");

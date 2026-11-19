@@ -22,7 +22,9 @@ const nextConfig: NextConfig = {
       {
         source: "/:path*",
         headers: [
-          { key: "Content-Security-Policy", value: "frame-ancestors 'self' https://*.pinet.com https://*.minepi.com" },
+          { key: "Content-Security-Policy", value: "frame-ancestors 'self' https://*.pinet.com https://*.minepi.com; base-uri 'self'; object-src 'none'; form-action 'self'" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
+          { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "X-Content-Type-Options", value: "nosniff" },
         ],
