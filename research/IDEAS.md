@@ -10,7 +10,7 @@
 | Pi.authenticate + `/me` | Mainnet ✅ |
 | U2A Payments (المستخدم بيدفع للتطبيق) | Mainnet ✅ |
 | A2U Payments (التطبيق بيدفع للمستخدم، بـ `pi-backend`) | Mainnet ✅ |
-| **Subscriptions عبر Smart Contract** | **Testnet بس دلوقتي** ⚠️ (لحد ما ينزل Mainnet بنستخدم U2A شهري كبديل) |
+| **Subscriptions عبر Smart Contract** | **Testnet بس** ⚠️. نسخة v1 هتتشال قبل Mainnet، والمشتركين هيضطروا يشتركوا تاني. المستخدم بيدّي **إذن سحب** لحد (السعر × عدد الفترات)، يعني **الفلوس مش محجوزة**. السحب بيحصل بس لما التاجر يشغّل `process`، ولو الرصيد مش كفاية الدفعة بتفشل والتجديد التلقائي بيتقفل. لحد ما ينزل Mainnet بنستخدم U2A شهري، أو دفع مقدّم لعدة شهور |
 | Ads: Interstitial و Rewarded (والـ rewarded بيتأكد منه السيرفر) | ✅ (محتاج موافقة على Ad Network) |
 | In-app Notifications: `POST /v2/in_app_notifications/notify` | ✅ |
 | Chat Rooms | ✅ |
