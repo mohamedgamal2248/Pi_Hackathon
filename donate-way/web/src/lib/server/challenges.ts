@@ -1,4 +1,5 @@
 import "server-only";
+import { pickTitle } from "./campaigns";
 import { db } from "./db";
 
 export type Challenge = {
@@ -14,7 +15,7 @@ export type Challenge = {
   participants: number;
 };
 
-type Raw = { id: string; title: string; description: string | null; goal: number; campaign_id: string | null; starts_at: string; ends_at: string; dw_campaigns: { title: string } | null };
+type Raw = { id: string; title: string; description: string | null; goal: number; campaign_id: string | null; starts_at: string; ends_at: string; dw_campaigns: { title: string; title_en: string | null } | null };
 
 async function withProgress(c: Raw): Promise<Challenge> {
   let q = db()
@@ -32,7 +33,7 @@ async function withProgress(c: Raw): Promise<Challenge> {
     description: c.description,
     goal: Number(c.goal),
     campaign_id: c.campaign_id,
-    campaign_title: c.dw_campaigns?.title ?? null,
+    campaign_title: pickTitle(c.dw_campaigns),
     starts_at: c.starts_at,
     ends_at: c.ends_at,
     raised: rows.reduce((s, r) => s + Number(r.amount), 0),
@@ -40,7 +41,7 @@ async function withProgress(c: Raw): Promise<Challenge> {
   };
 }
 
-const COLS = "id,title,description,goal,campaign_id,starts_at,ends_at,dw_campaigns(title)";
+const COLS = "id,title,description,goal,campaign_id,starts_at,ends_at,dw_campaigns(title,title_en)";
 
 // The running challenge that ends first (or null).
 export async function activeChallenge(): Promise<Challenge | null> {

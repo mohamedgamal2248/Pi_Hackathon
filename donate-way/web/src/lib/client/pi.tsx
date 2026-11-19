@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { useLang } from "./i18n";
 import type { PiPaymentDTO } from "./pi-types";
 
 export type SessionUser = { username: string; isAdmin: boolean; hasWallet: boolean; referralCode: string | null };
@@ -68,6 +69,7 @@ export class ApiError extends Error {
 }
 
 export function PiProvider({ children }: { children: ReactNode }) {
+  const { lang } = useLang();
   const [ready, setReady] = useState(false);
   const [user, setUser] = useState<SessionUser | null>(null);
   const [signingIn, setSigningIn] = useState(false);
@@ -82,11 +84,12 @@ export function PiProvider({ children }: { children: ReactNode }) {
     const headers = new Headers(init.headers);
     if (init.body && !(init.body instanceof FormData) && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
     if (token.current) headers.set("Authorization", `Bearer ${token.current}`);
+    headers.set("X-Lang", lang);
     const res = await fetch(path, { ...init, headers });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new ApiError(res.status, (data as { error?: string }).error ?? "error");
     return data as T;
-  }, []);
+  }, [lang]);
 
   const onIncomplete = useCallback((payment: PiPaymentDTO) => {
     pendingIncomplete.current = payment.identifier;

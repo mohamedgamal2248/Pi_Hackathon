@@ -11,6 +11,9 @@ export function campaignInput(body: Record<string, unknown>, partial = false) {
 
   if (has("title")) out.title = str(body.title, 120, "title");
   if (has("summary")) out.summary = str(body.summary, 280, "summary", true);
+  if (has("title_en")) out.title_en = str(body.title_en, 120, "title_en", true);
+  if (has("summary_en")) out.summary_en = str(body.summary_en, 280, "summary_en", true);
+  if (has("story_en")) out.story_en = str(body.story_en, 8000, "story_en", true);
   if (has("story")) out.story = str(body.story, 8000, "story");
   if (has("category")) {
     const c = str(body.category, 20, "category")!;
@@ -40,8 +43,9 @@ export function campaignInput(body: Record<string, unknown>, partial = false) {
       .map((u) => {
         const unit = u as { amount?: unknown; label?: unknown };
         const label = typeof unit.label === "string" ? unit.label.trim().slice(0, 40) : "";
+        const labelEn = typeof (unit as { label_en?: unknown }).label_en === "string" ? ((unit as { label_en: string }).label_en).trim().slice(0, 40) : "";
         const amount = Number(unit.amount);
-        return label && Number.isFinite(amount) && amount > 0 ? { amount: Math.round(amount * 100) / 100, label } : null;
+        return label && Number.isFinite(amount) && amount > 0 ? { amount: Math.round(amount * 100) / 100, label, ...(labelEn ? { label_en: labelEn } : {}) } : null;
       })
       .filter(Boolean);
   }

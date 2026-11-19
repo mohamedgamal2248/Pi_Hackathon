@@ -1,3 +1,4 @@
+import { pickTitle } from "@/lib/server/campaigns";
 import { db } from "@/lib/server/db";
 import { handler, isAdmin, json, requireSession } from "@/lib/server/http";
 import { pointsBalance } from "@/lib/server/points";
@@ -8,7 +9,7 @@ export const GET = handler(async (request) => {
   const [donations, user, points, admin, referrals] = await Promise.all([
     db()
       .from("dw_donations")
-      .select("id,amount,campaign_share,anonymous,campaign_id,fund,is_zakat,gift,txid,completed_at,dw_campaigns(title),dw_donation_items(campaign_id)")
+      .select("id,amount,campaign_share,anonymous,campaign_id,fund,is_zakat,gift,txid,completed_at,dw_campaigns(title,title_en),dw_donation_items(campaign_id)")
       .eq("pi_uid", session.uid)
       .eq("status", "completed")
       .order("completed_at", { ascending: false })
@@ -29,9 +30,9 @@ export const GET = handler(async (request) => {
     gift: { type: string; name: string } | null;
     txid: string | null;
     completed_at: string;
-    dw_campaigns: { title: string } | null;
+    dw_campaigns: { title: string; title_en: string | null } | null;
     dw_donation_items: { campaign_id: string | null }[];
-  }[]).map((d) => ({ ...d, amount: Number(d.amount), campaign_share: Number(d.campaign_share ?? 0) }));
+  }[]).map((d) => ({ ...d, dw_campaigns: d.dw_campaigns ? { title: pickTitle(d.dw_campaigns) as string } : null, amount: Number(d.amount), campaign_share: Number(d.campaign_share ?? 0) }));
 
   const helped = new Set(list.flatMap((d) => d.dw_donation_items.map((i) => i.campaign_id)).filter(Boolean));
   const streak = givingStreak(list.map((d) => d.completed_at));

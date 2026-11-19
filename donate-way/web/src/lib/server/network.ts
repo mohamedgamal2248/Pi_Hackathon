@@ -10,7 +10,7 @@ const STAGING_HOSTS = (process.env.STAGING_HOSTS ?? "sanad-pi-staging.vercel.app
   .map((h) => h.trim().toLowerCase())
   .filter(Boolean);
 
-type Ctx = { testnet: boolean };
+type Ctx = { testnet: boolean; en: boolean };
 const store = new AsyncLocalStorage<Ctx>();
 
 export function hostIsTestnet(request: Request) {
@@ -19,7 +19,10 @@ export function hostIsTestnet(request: Request) {
 }
 
 export function withNetwork<T>(request: Request, fn: () => Promise<T>): Promise<T> {
-  return store.run({ testnet: hostIsTestnet(request) }, fn);
+  return store.run({ testnet: hostIsTestnet(request), en: request.headers.get("x-lang") === "en" }, fn);
 }
 
 export const isTestnet = () => store.getStore()?.testnet ?? false;
+
+// The UI language the browser asked for (X-Lang header); campaign texts are localized with it.
+export const wantsEnglish = () => store.getStore()?.en ?? false;

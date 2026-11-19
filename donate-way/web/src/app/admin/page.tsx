@@ -22,8 +22,11 @@ type Dash = {
 
 type Form = {
   title: string;
+  title_en: string;
   summary: string;
+  summary_en: string;
   story: string;
+  story_en: string;
   category: string;
   goal: string;
   cover_url: string;
@@ -32,13 +35,16 @@ type Form = {
   zakat_eligible: boolean;
   deadline: string;
   status: string;
-  impact_units: { amount: string; label: string }[];
+  impact_units: { amount: string; label: string; label_en: string }[];
 };
 
 const EMPTY: Form = {
   title: "",
+  title_en: "",
   summary: "",
+  summary_en: "",
   story: "",
+  story_en: "",
   category: "health",
   goal: "",
   cover_url: "",
@@ -98,7 +104,7 @@ function CampaignForm({ initial, id, onDone }: { initial: Form; id: string | nul
       deadline: f.deadline ? new Date(f.deadline).toISOString() : null,
       cover_url: f.cover_url || null,
       cover_path: f.cover_path || null,
-      impact_units: f.impact_units.filter((u) => u.label.trim() && Number(u.amount) > 0).map((u) => ({ amount: Number(u.amount), label: u.label.trim() })),
+      impact_units: f.impact_units.filter((u) => u.label.trim() && Number(u.amount) > 0).map((u) => ({ amount: Number(u.amount), label: u.label.trim(), label_en: u.label_en.trim() })),
     };
     try {
       if (id) await api(`/api/admin/campaigns/${id}`, { method: "PATCH", body: JSON.stringify(body) });
@@ -131,18 +137,38 @@ function CampaignForm({ initial, id, onDone }: { initial: Form; id: string | nul
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => onFile(e.target.files?.[0])} />
       </div>
 
-      <label className="block text-sm">
-        <span className="mb-1 block text-muted">{t("title")}</span>
-        <input className="input" maxLength={120} value={f.title} onChange={(e) => set("title", e.target.value)} />
-      </label>
-      <label className="block text-sm">
-        <span className="mb-1 block text-muted">{t("summary")}</span>
-        <input className="input" maxLength={280} value={f.summary} onChange={(e) => set("summary", e.target.value)} />
-      </label>
-      <label className="block text-sm">
-        <span className="mb-1 block text-muted">{t("story_label")}</span>
-        <textarea className="input" rows={7} value={f.story} onChange={(e) => set("story", e.target.value)} />
-      </label>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="space-y-3 rounded-2xl border border-line p-3">
+          <span className="chip !bg-brand-soft !text-brand">AR · العربية</span>
+          <label className="block text-sm">
+            <span className="mb-1 block text-muted">{t("title")}</span>
+            <input className="input" dir="rtl" maxLength={120} value={f.title} onChange={(e) => set("title", e.target.value)} />
+          </label>
+          <label className="block text-sm">
+            <span className="mb-1 block text-muted">{t("summary")}</span>
+            <input className="input" dir="rtl" maxLength={280} value={f.summary} onChange={(e) => set("summary", e.target.value)} />
+          </label>
+          <label className="block text-sm">
+            <span className="mb-1 block text-muted">{t("story_label")}</span>
+            <textarea className="input" dir="rtl" rows={7} value={f.story} onChange={(e) => set("story", e.target.value)} />
+          </label>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-line p-3">
+          <span className="chip !bg-brand-soft !text-brand">EN · English</span>
+          <label className="block text-sm">
+            <span className="mb-1 block text-muted">Title</span>
+            <input className="input" dir="ltr" maxLength={120} value={f.title_en} onChange={(e) => set("title_en", e.target.value)} />
+          </label>
+          <label className="block text-sm">
+            <span className="mb-1 block text-muted">Short summary (optional)</span>
+            <input className="input" dir="ltr" maxLength={280} value={f.summary_en} onChange={(e) => set("summary_en", e.target.value)} />
+          </label>
+          <label className="block text-sm">
+            <span className="mb-1 block text-muted">Story</span>
+            <textarea className="input" dir="ltr" rows={7} value={f.story_en} onChange={(e) => set("story_en", e.target.value)} />
+          </label>
+        </div>
+      </div>
       <div className="grid gap-3 sm:grid-cols-3">
         <label className="block text-sm">
           <span className="mb-1 block text-muted">{t("goal")}</span>
@@ -193,14 +219,15 @@ function CampaignForm({ initial, id, onDone }: { initial: Form; id: string | nul
               value={u.amount}
               onChange={(e) => set("impact_units", f.impact_units.map((x, j) => (j === i ? { ...x, amount: e.target.value.replace(/[^0-9.]/g, "") } : x)))}
             />
-            <input className="input flex-1" placeholder={t("unit_label")} value={u.label} onChange={(e) => set("impact_units", f.impact_units.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))} />
+            <input className="input min-w-0 flex-1" dir="rtl" placeholder={`${t("unit_label")} (AR)`} value={u.label} onChange={(e) => set("impact_units", f.impact_units.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))} />
+            <input className="input min-w-0 flex-1" dir="ltr" placeholder="Label (EN)" value={u.label_en} onChange={(e) => set("impact_units", f.impact_units.map((x, j) => (j === i ? { ...x, label_en: e.target.value } : x)))} />
             <button className="grid h-12 w-12 place-items-center rounded-full text-muted hover:text-danger" onClick={() => set("impact_units", f.impact_units.filter((_, j) => j !== i))} aria-label={t("remove")}>
               <Icon name="trash" size={18} />
             </button>
           </div>
         ))}
         {f.impact_units.length < 6 && (
-          <button className="chip" onClick={() => set("impact_units", [...f.impact_units, { amount: "", label: "" }])}>
+          <button className="chip" onClick={() => set("impact_units", [...f.impact_units, { amount: "", label: "", label_en: "" }])}>
             + {t("add_unit")}
           </button>
         )}
@@ -312,15 +339,18 @@ export default function AdminPage() {
   useEffect(load, [load]);
 
   async function openEdit(c: Campaign) {
-    const r = await api<{ campaign: Campaign & { story: string } }>(`/api/admin/campaigns/${c.id}`);
+    const r = await api<{ campaign: Campaign & { story: string; title_en?: string | null; summary_en?: string | null; story_en?: string | null } }>(`/api/admin/campaigns/${c.id}`);
     const x = r.campaign;
     setProofFor(null);
     setEditing({
       id: x.id,
       form: {
         title: x.title,
+        title_en: x.title_en ?? "",
         summary: x.summary ?? "",
+        summary_en: x.summary_en ?? "",
         story: x.story ?? "",
+        story_en: x.story_en ?? "",
         category: x.category,
         goal: String(x.goal),
         cover_url: x.cover_url ?? "",
@@ -329,7 +359,7 @@ export default function AdminPage() {
         zakat_eligible: x.zakat_eligible,
         deadline: x.deadline ? x.deadline.slice(0, 10) : "",
         status: x.status,
-        impact_units: (x.impact_units ?? []).map((u: ImpactUnit) => ({ amount: String(u.amount), label: u.label })),
+        impact_units: (x.impact_units ?? []).map((u: ImpactUnit & { label_en?: string }) => ({ amount: String(u.amount), label: u.label, label_en: u.label_en ?? "" })),
       },
     });
     window.scrollTo({ top: 0, behavior: "smooth" });

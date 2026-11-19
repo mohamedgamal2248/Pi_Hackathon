@@ -1,16 +1,20 @@
 import "server-only";
 import { db, must } from "./db";
+import { wantsEnglish } from "./network";
 
 export const CATEGORIES = ["health", "education", "food", "water", "emergency", "orphans", "mosque", "debts", "other"] as const;
 export const PUBLIC_STATUSES = ["active", "funded", "completed"];
 
-const LIST_COLS = "id,title,summary,category,country,goal,cover_url,urgent,zakat_eligible,deadline,status,created_at,impact_units";
+const LIST_COLS = "id,title,title_en,summary,summary_en,category,country,goal,cover_url,urgent,zakat_eligible,deadline,status,created_at,impact_units";
 
 type CampaignRow = {
   id: string;
   title: string;
+  title_en?: string | null;
   summary: string | null;
+  summary_en?: string | null;
   story?: string;
+  story_en?: string | null;
   category: string;
   country: string;
   goal: number;
@@ -22,7 +26,7 @@ type CampaignRow = {
   deadline: string | null;
   status: string;
   created_at: string;
-  impact_units: { amount: number; label: string }[];
+  impact_units: { amount: number; label: string; label_en?: string }[];
   organizer_uid?: string;
 };
 
@@ -37,9 +41,22 @@ async function statsFor(ids: string[]) {
   return new Map(rows.map((r) => [r.campaign_id, { raised: Number(r.raised), donors: Number(r.donors), released: Number(r.released) }]));
 }
 
-function shape(c: CampaignRow, s?: { raised: number; donors: number; released: number }) {
+// English text when the browser asked for English and it exists, else the Arabic original.
+export const pick = (ar: string, en?: string | null) => (wantsEnglish() && en && en.trim() ? en : ar);
+export const pickTitle = (c: { title: string; title_en?: string | null } | null | undefined) => (c ? pick(c.title, c.title_en) : null);
+
+function shape(c: CampaignRow, s?: { raised: number; donors: number; released: number }, raw = false) {
   const { organizer_uid: _o, ...rest } = c;
   void _o;
+  if (!raw) {
+    rest.title = pick(c.title, c.title_en);
+    rest.summary = c.summary == null ? null : pick(c.summary, c.summary_en);
+    if (c.story != null) rest.story = pick(c.story, c.story_en);
+    rest.impact_units = (c.impact_units ?? []).map((u) => ({ amount: u.amount, label: pick(u.label, u.label_en) }));
+    delete rest.title_en;
+    delete rest.summary_en;
+    delete rest.story_en;
+  }
   return { ...rest, goal: Number(c.goal), raised: s?.raised ?? 0, donors: s?.donors ?? 0, released: s?.released ?? 0 };
 }
 
@@ -55,7 +72,7 @@ export async function listCampaigns(opts: { category?: string; q?: string; sort?
   if (opts.ids) query = query.in("id", opts.ids);
   if (opts.q) {
     const q = opts.q.replace(/[%,()]/g, " ").slice(0, 60);
-    query = query.or(`title.ilike.%${q}%,summary.ilike.%${q}%`);
+    query = query.or(`title.ilike.%${q}%,summary.ilike.%${q}%,title_en.ilike.%${q}%`);
   }
   const rows = must(await query) as CampaignRow[];
   const stats = await statsFor(rows.map((r) => r.id));
@@ -109,7 +126,7 @@ export async function getCampaign(id: string, viewerUid?: string, includeHidden 
     .sort((a, b) => (b.at ?? "").localeCompare(a.at ?? ""));
 
   return {
-    ...shape(c, stats.get(id)),
+    ...shape(c, stats.get(id), includeHidden),
     following: !!follow.data,
     updates: (updates.data ?? []).map((u) => ({ ...u, amount_spent: u.amount_spent == null ? null : Number(u.amount_spent) })),
     recentDonors,
@@ -152,7 +169,7 @@ export async function platformStats() {
 export async function recentFeed(limit = 12) {
   const { data } = await db()
     .from("dw_donations")
-    .select("amount,anonymous,completed_at,gift,campaign_id,fund,pi_uid,dw_campaigns(title)")
+    .select("amount,anonymous,completed_at,gift,campaign_id,fund,pi_uid,dw_campaigns(title,title_en)")
     .eq("status", "completed")
     .order("completed_at", { ascending: false })
     .limit(limit);
@@ -164,7 +181,7 @@ export async function recentFeed(limit = 12) {
     campaign_id: string | null;
     fund: string | null;
     pi_uid: string;
-    dw_campaigns: { title: string } | null;
+    dw_campaigns: { title: string; title_en: string | null } | null;
   }[];
   const names = await usernames(rows.map((r) => r.pi_uid));
   return rows.map((d) => ({
@@ -173,14 +190,14 @@ export async function recentFeed(limit = 12) {
     at: d.completed_at,
     gift: d.gift?.type ?? null,
     campaignId: d.campaign_id,
-    target: d.dw_campaigns?.title ?? (d.fund === "zakat" ? "zakat" : d.fund === "general" ? "general" : "cart"),
+    target: pickTitle(d.dw_campaigns) ?? (d.fund === "zakat" ? "zakat" : d.fund === "general" ? "general" : "cart"),
   }));
 }
 
 export async function latestProofs(limit = 6) {
   const { data } = await db()
     .from("dw_updates")
-    .select("id,title,body,amount_spent,media,created_at,campaign_id,dw_campaigns(title)")
+    .select("id,title,body,amount_spent,media,created_at,campaign_id,dw_campaigns(title,title_en)")
     .eq("kind", "proof_of_spend")
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -192,8 +209,8 @@ export async function latestProofs(limit = 6) {
     media: string[];
     created_at: string;
     campaign_id: string;
-    dw_campaigns: { title: string } | null;
-  }[]).map((p) => ({ ...p, amount_spent: p.amount_spent == null ? null : Number(p.amount_spent), campaign: p.dw_campaigns?.title ?? "" }));
+    dw_campaigns: { title: string; title_en: string | null } | null;
+  }[]).map((p) => ({ ...p, amount_spent: p.amount_spent == null ? null : Number(p.amount_spent), campaign: pickTitle(p.dw_campaigns) ?? "" }));
 }
 
 export async function leaderboard(limit = 10, sinceDays?: number) {
