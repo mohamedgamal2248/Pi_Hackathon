@@ -144,3 +144,70 @@ body {
     padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
   }
 }
+
+/* ---------- Motion (CSS only, light). Disabled for people who ask for reduced motion. ---------- */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: none; }
+}
+@keyframes sheet-pop {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes pop {
+  0% { transform: scale(0.4); opacity: 0; }
+  70% { transform: scale(1.12); opacity: 1; }
+  100% { transform: scale(1); }
+}
+@keyframes confetti {
+  0% { transform: translate(0, -10px) rotate(0); opacity: 1; }
+  100% { transform: translate(var(--x, 0), 340px) rotate(540deg); opacity: 0; }
+}
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(50%); }
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+@layer components {
+  .reveal { opacity: 0; transform: translateY(14px); transition: opacity 0.55s ease, transform 0.55s cubic-bezier(0.2, 0.7, 0.2, 1); }
+  .reveal[data-in="1"] { opacity: 1; transform: none; }
+  .page-in { animation: fade-up 0.4s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+  .fade-in { animation: fade-in 0.25s ease both; }
+  .sheet { animation: sheet-up 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+  @media (min-width: 640px) { .sheet { animation-name: sheet-pop; } }
+  .pop { animation: pop 0.45s cubic-bezier(0.2, 0.8, 0.2, 1.2) both; }
+  .confetti { position: absolute; top: 0; width: 7px; height: 11px; border-radius: 2px; animation: confetti 1.4s ease-out forwards; }
+  .marquee { animation: marquee 40s linear infinite; }
+  .marquee:hover { animation-play-state: paused; }
+  [dir="ltr"] .marquee { animation-direction: reverse; }
+  .live-dot { animation: pulse-dot 1.6s ease-in-out infinite; }
+  .stagger > * { animation: fade-up 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+  .stagger > *:nth-child(2) { animation-delay: 60ms; }
+  .stagger > *:nth-child(3) { animation-delay: 120ms; }
+  .stagger > *:nth-child(4) { animation-delay: 180ms; }
+  .stagger > *:nth-child(5) { animation-delay: 240ms; }
+  .stagger > *:nth-child(n + 6) { animation-delay: 300ms; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+  .reveal { opacity: 1; transform: none; }
+}
+
+@media print {
+  header, nav, footer, .no-print { display: none !important; }
+  body, html { background: #fff !important; color: #000 !important; }
+  .card { border-color: #ccc !important; background: #fff !important; }
+}

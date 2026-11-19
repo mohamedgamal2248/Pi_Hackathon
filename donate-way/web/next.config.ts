@@ -12,6 +12,10 @@ const nextConfig: NextConfig = {
     },
   },
   serverExternalPackages: ["pi-backend"],
+  images: {
+    remotePatterns: [{ protocol: "https", hostname: "cguxdschojoqbffdrlhm.supabase.co", pathname: "/storage/v1/object/public/**" }],
+    formats: ["image/avif", "image/webp"],
+  },
   // Pi Browser and the Pi Sandbox load the app in a frame: no X-Frame-Options, and only Pi hosts may frame it.
   async headers() {
     return [

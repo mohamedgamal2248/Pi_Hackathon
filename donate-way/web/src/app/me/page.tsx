@@ -1,160 +1,226 @@
 "use client";
 
 import Link from "next/link";
-import { Icon } from "@/components/Icon";
 import { useCallback, useEffect, useState } from "react";
-import { DonateSheet } from "@/components/DonateSheet";
-import { useLang } from "@/lib/client/i18n";
+import { Icon } from "@/components/Icon";
+import { Money } from "@/components/Money";
+import { MonthlySadaqa } from "@/components/MonthlySadaqa";
+import { useLang, type TKey } from "@/lib/client/i18n";
+import { useCountUp } from "@/lib/client/motion";
 import { usePi } from "@/lib/client/pi";
-import { pi } from "@/lib/client/types";
+import { pi, shareUrl, sharePi, type Campaign } from "@/lib/client/types";
 
 type Me = {
   username: string;
   total: number;
+  thisYear: number;
   count: number;
   campaignsHelped: number;
+  zakatPaid: number;
+  gifts: number;
   points: number;
-  donations: { amount: number; anonymous: boolean; campaign_id: string | null; txid: string | null; completed_at: string; dw_campaigns: { title: string } | null }[];
-  recurring: { id: string; amount: number; next_due: string; campaign_id: string | null; dw_campaigns: { title: string } | null }[];
-  organizer: { status: string } | null;
+  streak: { weeks: number; givenThisWeek: boolean };
+  referralCode: string | null;
+  referrals: { count: number; total: number };
+  hasWallet: boolean;
+  hawlStart: string | null;
+  donations: {
+    id: string;
+    amount: number;
+    campaign_id: string | null;
+    fund: string | null;
+    is_zakat: boolean;
+    gift: { type: string; name: string } | null;
+    completed_at: string;
+    dw_campaigns: { title: string } | null;
+  }[];
 };
 
-function badges(me: Me, ar: boolean) {
-  const list: string[] = [];
-  if (me.count >= 1) list.push(ar ? "أول خطوة" : "First gift");
-  if (me.count >= 5) list.push(ar ? "سند دائم" : "Regular");
-  if (me.count >= 20) list.push(ar ? "عمود خير" : "Pillar");
-  if (me.total >= 100) list.push(ar ? "١٠٠ π+" : "100 π+");
-  if (me.campaignsHelped >= 5) list.push(ar ? "متعدد الأثر" : "Wide impact");
-  if (me.recurring.length > 0) list.push(ar ? "صدقة جارية" : "Monthly giver");
-  if (me.organizer?.status === "approved") list.push(ar ? "منظّم موثّق" : "Verified organizer");
-  return list;
+function badges(me: Me): TKey[] {
+  const b: TKey[] = [];
+  if (me.count >= 1) b.push("b_first");
+  if (me.count >= 5) b.push("b_regular");
+  if (me.count >= 20) b.push("b_pillar");
+  if (me.total >= 100) b.push("b_hundred");
+  if (me.campaignsHelped >= 5) b.push("b_wide");
+  if (me.zakatPaid > 0) b.push("b_zakat");
+  if (me.gifts > 0) b.push("b_gift");
+  if (me.streak.weeks >= 4) b.push("b_streak");
+  if (me.referrals.count > 0) b.push("b_ambassador");
+  return b;
 }
 
 export default function MePage() {
   const { t, lang } = useLang();
   const { api, user, signIn, ready } = usePi();
   const [me, setMe] = useState<Me | null>(null);
-  const [pay, setPay] = useState<Me["recurring"][number] | null>(null);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [copied, setCopied] = useState(false);
+  const points = useCountUp(me?.points ?? 0);
 
   const load = useCallback(() => {
-    if (!user) return;
-    api<Me>("/api/me")
-      .then((data) => {
-        setMe(data);
-        // Opened from a monthly reminder notification: /me?pay=<pledge id>
-        const due = new URLSearchParams(window.location.search).get("pay");
-        const pledge = data.recurring.find((r) => r.id === due);
-        if (pledge) setPay(pledge);
-      })
-      .catch(() => undefined);
+    if (user) api<Me>("/api/me").then(setMe).catch(() => undefined);
   }, [api, user]);
-
    
   useEffect(load, [load]);
-
-  async function stop(id: string) {
-    await api(`/api/recurring?id=${id}`, { method: "DELETE" });
-    load();
-  }
+  useEffect(() => {
+    api<{ campaigns: Campaign[] }>("/api/campaigns").then((r) => setCampaigns(r.campaigns.filter((c) => c.status === "active"))).catch(() => undefined);
+  }, [api]);
 
   if (!user)
     return (
-      <div className="card space-y-4 p-8 text-center">
+      <div className="card mx-auto max-w-md space-y-4 p-8 text-center">
+        <Icon name="award" size={40} className="mx-auto text-brand" />
         <p className="text-muted">{t("sign_in_to_see")}</p>
         <button className="btn btn-primary" disabled={!ready} onClick={() => signIn().catch(() => undefined)}>
           {t("sign_in")}
         </button>
       </div>
     );
-  if (!me) return <div className="card h-80 animate-pulse bg-surface-2" />;
+  if (!me) return <div className="card h-80 animate-pulse" />;
 
-  const date = (s: string) => new Date(s).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-GB");
+  const date = (s: string) => new Date(s).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-GB", { day: "numeric", month: "short", year: "numeric" });
+  const link = me.referralCode ? shareUrl("/", me.referralCode) : null;
+  const target = (d: Me["donations"][number]) => d.dw_campaigns?.title ?? (d.fund === "zakat" ? t("to_zakat") : d.fund === "general" ? t("to_general") : t("to_cart"));
 
   return (
-    <div className="space-y-5">
-      <div className="card space-y-4 p-5">
+    <div className="stagger grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      {/* Totals */}
+      <section className="card space-y-4 p-5 lg:col-span-2">
         <div className="flex items-center gap-3">
           <div className="grid h-14 w-14 place-items-center rounded-2xl bg-brand text-2xl font-bold text-brand-ink">{me.username[0]?.toUpperCase()}</div>
-          <div>
-            <h1 className="text-lg font-bold">@{me.username}</h1>
+          <div className="min-w-0">
+            <h1 className="truncate text-lg font-bold">@{me.username}</h1>
             <div className="mt-1 flex flex-wrap gap-1.5">
-              {badges(me, lang === "ar").map((b) => (
-                <span key={b} className="rounded-full bg-gold-soft px-2.5 py-1 text-xs font-bold text-gold">
-                  {b}
+              {badges(me).map((b) => (
+                <span key={b} className="pop rounded-full bg-gold-soft px-2.5 py-1 text-xs font-bold text-gold">
+                  {t(b)}
                 </span>
               ))}
             </div>
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-2 text-center text-sm">
-          <div className="rounded-xl bg-surface-2 p-3">
-            <b className="block text-lg text-brand">{pi(me.total)}</b>
-            <span className="text-muted">{t("my_total")}</span>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="rounded-2xl bg-surface-2 p-3">
+            <div className="text-xs text-muted">{t("my_total")}</div>
+            <div className="text-xl text-brand">
+              <Money value={me.total} animate />
+            </div>
           </div>
-          <div className="rounded-xl bg-surface-2 p-3">
-            <b className="block text-lg">{me.campaignsHelped}</b>
-            <span className="text-muted">{t("campaigns_helped")}</span>
+          <div className="rounded-2xl bg-surface-2 p-3">
+            <div className="text-xs text-muted">{t("this_year")}</div>
+            <div className="text-xl">
+              <Money value={me.thisYear} showUsd={false} />
+            </div>
           </div>
-          <div className="rounded-xl bg-gold-soft p-3">
-            <b className="block text-lg text-gold">{Math.floor(me.points)}</b>
-            <span className="text-muted">{t("points")}</span>
+          <div className="rounded-2xl bg-surface-2 p-3">
+            <div className="text-xs text-muted">{t("campaigns_helped")}</div>
+            <div className="num text-xl font-bold">{me.campaignsHelped}</div>
+          </div>
+          <div className="rounded-2xl bg-gold-soft p-3">
+            <div className="text-xs text-muted">{t("points")}</div>
+            <div className="num text-xl font-bold text-gold">{Math.floor(points)}</div>
           </div>
         </div>
         <p className="text-xs text-muted">{t("points_note")}</p>
-      </div>
+      </section>
 
-      {me.recurring.length > 0 && (
-        <div className="card p-5">
-          <h2 className="mb-3 flex items-center gap-2 font-bold"><Icon name="repeat" size={18} className="text-brand" /> {t("monthly_pledges")}</h2>
-          <ul className="space-y-3">
-            {me.recurring.map((r) => (
-              <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
-                <div>
-                  <b>{pi(r.amount)}</b> · {r.dw_campaigns?.title ?? t("general_fund")}
-                  <div className="text-xs text-muted">
-                    {t("next_due")}: {date(r.next_due)}
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <button className="btn btn-primary !px-3 !py-1.5 text-xs" onClick={() => setPay(r)}>
-                    {t("pay_now")}
-                  </button>
-                  <button className="btn btn-ghost !px-3 !py-1.5 text-xs" onClick={() => stop(r.id)}>
-                    {t("stop")}
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
+      {/* Weekly streak */}
+      <section className="card space-y-3 p-5">
+        <h2 className="flex items-center gap-2 font-bold">
+          <Icon name="flame" className="text-brand" /> {t("streak")}
+        </h2>
+        <div className="num text-3xl font-bold">{t("streak_weeks", { n: me.streak.weeks })}</div>
+        <div className="flex gap-1.5" aria-hidden>
+          {Array.from({ length: 8 }).map((_, i) => (
+            <span key={i} className={`h-2.5 flex-1 rounded-full ${i < Math.min(8, me.streak.weeks) ? "bg-brand" : "bg-surface-2"}`} />
+          ))}
         </div>
-      )}
+        <p className={`text-sm ${me.streak.givenThisWeek ? "text-brand" : "text-muted"}`}>{me.streak.givenThisWeek ? t("streak_done") : t("streak_keep")}</p>
+      </section>
 
-      <div className="card p-5">
-        <h2 className="mb-3 font-bold">{t("history")}</h2>
+      {/* Ambassador */}
+      <section className="card space-y-3 p-5">
+        <h2 className="flex items-center gap-2 font-bold">
+          <Icon name="link" className="text-gold" /> {t("ambassador_title")}
+        </h2>
+        <p className="text-sm text-muted">{t("ambassador_body")}</p>
+        {link && (
+          <div className="flex gap-2">
+            <code className="num min-w-0 flex-1 truncate rounded-xl bg-surface-2 px-3 py-3 text-xs" dir="ltr">
+              {link}
+            </code>
+            <button
+              className="btn btn-ghost !px-3"
+              onClick={() => {
+                navigator.clipboard?.writeText(link).catch(() => undefined);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 1500);
+              }}
+              aria-label={t("copy_link")}
+            >
+              <Icon name={copied ? "check" : "link"} size={18} />
+            </button>
+            <button className="btn btn-gold !px-3" onClick={() => sharePi(t("app_name"), t("hero_title"), link)} aria-label={t("share")}>
+              <Icon name="share" size={18} />
+            </button>
+          </div>
+        )}
+        <p className="text-sm">{t("ambassador_stats", { n: me.referrals.count, amount: pi(me.referrals.total) })}</p>
+      </section>
+
+      {/* Zakat year */}
+      <section className="card space-y-2 p-5">
+        <h2 className="flex items-center gap-2 font-bold">
+          <Icon name="clock" className="text-brand" /> {t("hawl_status")}
+        </h2>
+        {me.hawlStart ? (
+          <p className="text-sm">
+            {t("zakat_hawl_started", { date: new Date(me.hawlStart).toLocaleDateString(lang === "ar" ? "ar-EG-u-ca-islamic" : "en-GB-u-ca-islamic", { day: "numeric", month: "long", year: "numeric" }) })}
+          </p>
+        ) : (
+          <p className="text-sm text-muted">—</p>
+        )}
+        <p className="text-sm text-muted">
+          {t("zakat_paid")}: <b className="num text-ink">{pi(me.zakatPaid)}</b>
+        </p>
+        <Link href="/zakat" className="btn btn-ghost w-full">
+          {t("zakat_title")}
+        </Link>
+      </section>
+
+      {campaigns.length > 0 && <MonthlySadaqa campaigns={campaigns} />}
+
+      {/* History */}
+      <section className="card p-5 lg:col-span-2">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="font-bold">{t("history")}</h2>
+          <Link href={`/report/${new Date().getFullYear()}`} className="text-sm text-muted hover:text-ink">
+            {t("annual_report")}
+          </Link>
+        </div>
         {me.donations.length === 0 && <p className="text-muted">—</p>}
         <ul className="divide-y divide-line">
-          {me.donations.map((d, i) => (
-            <li key={i} className="flex items-center justify-between gap-2 py-2.5 text-sm">
-              <div>
-                {d.campaign_id ? <Link href={`/campaigns/${d.campaign_id}`}>{d.dw_campaigns?.title}</Link> : t("general_fund")}
+          {me.donations.map((d) => (
+            <li key={d.id} className="flex items-center justify-between gap-3 py-3 text-sm">
+              <div className="min-w-0">
+                <div className="truncate">
+                  {d.campaign_id ? <Link href={`/campaigns/${d.campaign_id}`}>{target(d)}</Link> : target(d)}
+                  {d.is_zakat && <span className="ms-2 rounded-full bg-brand-soft px-2 py-0.5 text-[11px] text-brand">{t("zakat_payment")}</span>}
+                  {d.gift && <span className="ms-2 rounded-full bg-gold-soft px-2 py-0.5 text-[11px] text-gold">{d.gift.type === "memorial" ? t("memorial_badge") : t("gift_badge")}</span>}
+                </div>
                 <div className="text-xs text-muted">{date(d.completed_at)}</div>
               </div>
-              <b className="text-brand">{pi(d.amount)}</b>
+              <div className="flex shrink-0 items-center gap-3">
+                <b className="num text-brand">{pi(d.amount)}</b>
+                <Link href={`/receipt/${d.id}`} className="grid h-10 w-10 place-items-center rounded-full bg-surface-2" aria-label={t("receipt")}>
+                  <Icon name="receipt" size={18} />
+                </Link>
+              </div>
             </li>
           ))}
         </ul>
-      </div>
-
-      {pay && (
-        <DonateSheet
-          campaignId={pay.campaign_id}
-          title={pay.dw_campaigns?.title ?? t("general_fund")}
-          initialAmount={pay.amount}
-          onClose={() => setPay(null)}
-          onDone={load}
-        />
-      )}
+      </section>
     </div>
   );
 }

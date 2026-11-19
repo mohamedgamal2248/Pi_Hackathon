@@ -90,3 +90,18 @@ export function httpsUrl(value: unknown, field: string): string | null {
     throw new HttpError(400, `${field}_invalid`);
   }
 }
+
+// Small per-instance rate limiter (best effort on serverless): max `limit` hits per `windowMs` per key.
+const hits = new Map<string, number[]>();
+export function rateLimit(key: string, limit: number, windowMs: number) {
+  const now = Date.now();
+  const recent = (hits.get(key) ?? []).filter((t) => now - t < windowMs);
+  if (recent.length >= limit) throw new HttpError(429, "too_many_requests");
+  recent.push(now);
+  hits.set(key, recent);
+  if (hits.size > 5000) hits.clear();
+}
+
+export function clientIp(request: Request) {
+  return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+}

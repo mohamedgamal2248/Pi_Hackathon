@@ -3,31 +3,51 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import type { PiPaymentDTO } from "./pi-types";
 
-export type SessionUser = { username: string; isAdmin: boolean; organizerStatus: string | null };
+export type SessionUser = { username: string; isAdmin: boolean; hasWallet: boolean };
 
-type DonateArgs = {
-  amount: number;
-  campaignId: string | null;
+export type DonationItem = { campaignId: string | null; fund?: "general" | "zakat" | null; amount: number };
+export type DonateArgs = {
+  items: DonationItem[];
   memo: string;
   anonymous?: boolean;
   message?: string;
-  recurringId?: string | null;
+  gift?: { type: "gift" | "memorial"; name: string; note?: string } | null;
+  zakat?: boolean;
 };
 
 type Ctx = {
   ready: boolean;
-  inPiBrowser: boolean;
   user: SessionUser | null;
   signingIn: boolean;
   signIn: () => Promise<SessionUser | null>;
   api: <T>(path: string, init?: RequestInit) => Promise<T>;
-  donate: (args: DonateArgs) => Promise<{ txid: string }>;
+  donate: (args: DonateArgs) => Promise<{ txid: string; donationId: string }>;
+  refCode: string | null;
 };
 
 const PiContext = createContext<Ctx | null>(null);
 
-const SCOPES = ["username", "payments", "in_app_notifications"];
+// All permissions are asked once, together, at the first sign-in. Pi remembers the consent, so later
+// sign-ins (needed by the SDK on every page load before a payment) happen silently.
+const SCOPES = ["username", "payments", "wallet_address", "in_app_notifications"];
 const SANDBOX = process.env.NEXT_PUBLIC_PI_SANDBOX === "true";
+const CONSENT_KEY = "sanad_consented";
+const REF_KEY = "sanad_ref";
+
+const store = {
+  get: (k: string) => {
+    try {
+      return localStorage.getItem(k);
+    } catch {
+      return null;
+    }
+  },
+  set: (k: string, v: string) => {
+    try {
+      localStorage.setItem(k, v);
+    } catch {}
+  },
+};
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -37,16 +57,17 @@ export class ApiError extends Error {
 
 export function PiProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
-  const [inPiBrowser, setInPiBrowser] = useState(false);
   const [user, setUser] = useState<SessionUser | null>(null);
   const [signingIn, setSigningIn] = useState(false);
+  const [refCode, setRefCode] = useState<string | null>(null);
   const token = useRef<string | null>(null);
-  // The Pi SDK needs authenticate() on every page load before createPayment().
   const sdkAuthenticated = useRef(false);
+  const signInPromise = useRef<Promise<SessionUser | null> | null>(null);
+  const pendingIncomplete = useRef<string | null>(null);
 
   const api = useCallback(async <T,>(path: string, init: RequestInit = {}): Promise<T> => {
     const headers = new Headers(init.headers);
-    if (init.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+    if (init.body && !(init.body instanceof FormData) && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
     if (token.current) headers.set("Authorization", `Bearer ${token.current}`);
     const res = await fetch(path, { ...init, headers });
     const data = await res.json().catch(() => ({}));
@@ -54,8 +75,53 @@ export function PiProvider({ children }: { children: ReactNode }) {
     return data as T;
   }, []);
 
-  // Wait for the SDK script from layout.tsx and initialize it once.
+  const onIncomplete = useCallback((payment: PiPaymentDTO) => {
+    pendingIncomplete.current = payment.identifier;
+  }, []);
+
+  const signIn = useCallback(() => {
+    if (signInPromise.current) return signInPromise.current;
+    const run = async () => {
+      if (!window.Pi) return null;
+      setSigningIn(true);
+      try {
+        const auth = await window.Pi.authenticate(SCOPES, onIncomplete);
+        sdkAuthenticated.current = true;
+        store.set(CONSENT_KEY, "1");
+        const res = await api<{ token: string; user: SessionUser }>("/api/auth/signin", {
+          method: "POST",
+          body: JSON.stringify({
+            accessToken: auth.accessToken,
+            walletAddress: (auth.user as { wallet_address?: string }).wallet_address,
+            ref: store.get(REF_KEY),
+          }),
+        });
+        token.current = res.token;
+        setUser(res.user);
+        if (pendingIncomplete.current) {
+          const paymentId = pendingIncomplete.current;
+          pendingIncomplete.current = null;
+          await api("/api/payments/incomplete", { method: "POST", body: JSON.stringify({ paymentId }) }).catch(() => undefined);
+        }
+        return res.user;
+      } finally {
+        setSigningIn(false);
+        signInPromise.current = null;
+      }
+    };
+    signInPromise.current = run();
+    return signInPromise.current;
+  }, [api, onIncomplete]);
+
+  // Load the SDK; remember a referral code from ?ref=; sign in silently if consent was given before.
   useEffect(() => {
+    try {
+      const ref = new URLSearchParams(window.location.search).get("ref");
+      if (ref && /^[a-z0-9]{6,12}$/.test(ref)) store.set(REF_KEY, ref);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- read once after hydration
+      setRefCode(store.get(REF_KEY));
+    } catch {}
+
     let cancelled = false;
     let tries = 0;
     const timer = setInterval(async () => {
@@ -64,81 +130,40 @@ export function PiProvider({ children }: { children: ReactNode }) {
         clearInterval(timer);
         try {
           await window.Pi.init({ version: "2.0", sandbox: SANDBOX });
-          if (!cancelled) setInPiBrowser(SANDBOX || /PiBrowser/i.test(navigator.userAgent) || window.parent !== window);
-        } catch (e) {
-          console.warn("Pi.init failed", e);
-        }
-        if (!cancelled) setReady(true);
-      } else if (tries > 50) {
+        } catch {}
+        if (cancelled) return;
+        setReady(true);
+        if (store.get(CONSENT_KEY) === "1") signIn().catch(() => undefined);
+      } else if (tries > 60) {
         clearInterval(timer);
         if (!cancelled) setReady(true);
       }
     }, 100);
-    try {
-      const saved = sessionStorage.getItem("dw_session");
-      if (saved) {
-        const parsed = JSON.parse(saved) as { token: string; user: SessionUser };
-        token.current = parsed.token;
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- restore session after hydration
-        setUser(parsed.user);
-      }
-    } catch {}
     return () => {
       cancelled = true;
       clearInterval(timer);
     };
-  }, []);
-
-  // A payment left over from an interrupted session. The SDK reports it during authenticate(),
-  // before we have our own session, so it is resolved right after sign-in (verified on our server).
-  const pendingIncomplete = useRef<string | null>(null);
-  const onIncomplete = useCallback((payment: PiPaymentDTO) => {
-    pendingIncomplete.current = payment.identifier;
-  }, []);
-
-  const signIn = useCallback(async () => {
-    if (!window.Pi) return null;
-    setSigningIn(true);
-    try {
-      const auth = await window.Pi.authenticate(SCOPES, onIncomplete);
-      sdkAuthenticated.current = true;
-      const res = await api<{ token: string; user: SessionUser }>("/api/auth/signin", {
-        method: "POST",
-        body: JSON.stringify({ accessToken: auth.accessToken }),
-      });
-      token.current = res.token;
-      setUser(res.user);
-      try {
-        sessionStorage.setItem("dw_session", JSON.stringify(res));
-      } catch {}
-      if (pendingIncomplete.current) {
-        const paymentId = pendingIncomplete.current;
-        pendingIncomplete.current = null;
-        await api("/api/payments/incomplete", { method: "POST", body: JSON.stringify({ paymentId }) }).catch((e) =>
-          console.warn("incomplete payment", e)
-        );
-      }
-      return res.user;
-    } finally {
-      setSigningIn(false);
-    }
-  }, [api, onIncomplete]);
+  }, [signIn]);
 
   const donate = useCallback(
     async (args: DonateArgs) => {
       if (!window.Pi) throw new Error("pi_sdk_missing");
       if (!token.current || !sdkAuthenticated.current) await signIn();
-      return new Promise<{ txid: string }>((resolve, reject) => {
+      if (!token.current) throw new Error("sign_in_required");
+      const amount = Math.round(args.items.reduce((s, i) => s + i.amount, 0) * 1e7) / 1e7;
+      return new Promise<{ txid: string; donationId: string }>((resolve, reject) => {
         window.Pi!.createPayment(
           {
-            amount: args.amount,
+            amount,
             memo: args.memo.slice(0, 100),
             metadata: {
               kind: "donation",
-              campaignId: args.campaignId,
+              items: args.items.map((i) => ({ campaignId: i.campaignId, fund: i.campaignId ? null : i.fund ?? "general", amount: i.amount })),
               anonymous: !!args.anonymous,
               message: args.message ?? "",
-              recurringId: args.recurringId ?? null,
+              gift: args.gift ?? null,
+              ref: store.get(REF_KEY),
+              zakat: !!args.zakat,
             },
           },
           {
@@ -146,8 +171,8 @@ export function PiProvider({ children }: { children: ReactNode }) {
               api("/api/payments/approve", { method: "POST", body: JSON.stringify({ paymentId }) }).catch(reject);
             },
             onReadyForServerCompletion: (paymentId, txid) => {
-              api("/api/payments/complete", { method: "POST", body: JSON.stringify({ paymentId, txid }) })
-                .then(() => resolve({ txid }))
+              api<{ donationId: string }>("/api/payments/complete", { method: "POST", body: JSON.stringify({ paymentId, txid }) })
+                .then((r) => resolve({ txid, donationId: r.donationId }))
                 .catch(reject);
             },
             onCancel: (paymentId) => {
@@ -162,9 +187,7 @@ export function PiProvider({ children }: { children: ReactNode }) {
     [api, signIn]
   );
 
-  return (
-    <PiContext.Provider value={{ ready, inPiBrowser, user, signingIn, signIn, api, donate }}>{children}</PiContext.Provider>
-  );
+  return <PiContext.Provider value={{ ready, user, signingIn, signIn, api, donate, refCode }}>{children}</PiContext.Provider>;
 }
 
 export function usePi() {
