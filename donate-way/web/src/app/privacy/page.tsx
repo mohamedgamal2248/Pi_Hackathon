@@ -24,7 +24,7 @@ export default function Privacy() {
         </li>
         <li>Campaigns you follow, campaigns you report, fundraising pages you create, giving points and streaks, and the date you started your zakat year.</li>
         <li>Your invite code and who invited you, to credit ambassadors.</li>
-        <li>On your device only: your language, last gift amount and sign-in consent. We do not use cookies or advertising trackers.</li>
+        <li>On your device only: your language, last gift amount and sign-in consent. We do not use cookies or advertising trackers. We count visits with cookie-free Vercel Web Analytics.</li>
       </ul>
       <p>We do not receive your wallet passphrase, email address, phone number, contacts or location.</p>
 
@@ -40,6 +40,7 @@ export default function Privacy() {
         <li>Pi Network: sign-in, payments and notifications.</li>
         <li>Pi blockchain (public): payments and wallet balances are public by design.</li>
         <li>Our database and hosting providers, who store data for us under our instructions.</li>
+        <li>Vercel Web Analytics, a cookie-free service that counts page views and visitors without identifying you.</li>
         <li>OKX public market data, to read Pi and gold prices. No personal data is sent.</li>
       </ul>
       <p>We do not sell personal data and we do not share it for advertising.</p>

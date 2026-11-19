@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import Script from "next/script";
 import { Readex_Pro } from "next/font/google";
 import { Providers } from "@/components/Providers";
@@ -29,6 +30,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="ar" dir="rtl" className={`${readex.variable} h-full antialiased`}>
       <body className="min-h-dvh">
         <Script src="https://sdk.minepi.com/pi-sdk.js" strategy="afterInteractive" />
+        <Analytics />
         <Providers>
           <Shell>{children}</Shell>
         </Providers>
