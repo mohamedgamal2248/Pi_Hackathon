@@ -90,7 +90,7 @@ export default function SeasonPage() {
           {BADGES.map((b) => {
             const got = d.mine ? b.got(d.mine) : false;
             return (
-              <div key={b.key} className={`flex flex-col items-center gap-1 rounded-2xl p-3 text-center ${got ? "bg-brand-soft text-brand" : "bg-surface-2 text-muted opacity-60"}`}>
+              <div key={b.key} className={`flex flex-col items-center gap-1 rounded-2xl p-3 text-center ${got ? "bg-brand-soft text-brand" : "bg-surface-2 text-muted"}`}>
                 <Icon name="award" size={24} />
                 <div className="text-xs font-bold leading-tight">{t(b.key)}</div>
                 {!got && d.mine && <div className="num text-[10px]">{t("sb_need", { n: Math.max(1, b.left(d.mine)) })}</div>}

@@ -45,8 +45,8 @@ export default function LeaderboardPage() {
       ) : (
         <ol className="space-y-2">
           {rows.map((r, i) => (
-            <Reveal key={`${tab}-${i}`} delay={Math.min(i, 8) * 40}>
-              <li className="card flex items-center gap-3 p-3">
+            <Reveal as="li" key={`${tab}-${i}`} delay={Math.min(i, 8) * 40}>
+              <div className="card flex items-center gap-3 p-3">
                 <span className={`num grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-bold ${medal[i] ?? "bg-surface-2 text-muted"}`}>{i + 1}</span>
                 <span className="min-w-0 flex-1">
                   <b className="block truncate" dir="ltr">
@@ -57,7 +57,7 @@ export default function LeaderboardPage() {
                 <span className="text-brand">
                   <Money value={r.total} showUsd={false} />
                 </span>
-              </li>
+              </div>
             </Reveal>
           ))}
         </ol>

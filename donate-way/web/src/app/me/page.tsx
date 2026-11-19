@@ -153,7 +153,7 @@ export default function MePage() {
           {([3, 7, 30, 100] as const).map((n) => {
             const got = Math.max(me.daily.best, me.daily.days) >= n;
             return (
-              <div key={n} className={`flex flex-col items-center gap-1 rounded-2xl p-2 text-center ${got ? "bg-brand-soft text-brand" : "bg-surface-2 text-muted opacity-60"}`}>
+              <div key={n} className={`flex flex-col items-center gap-1 rounded-2xl p-2 text-center ${got ? "bg-brand-soft text-brand" : "bg-surface-2 text-muted"}`}>
                 <Icon name="award" size={22} />
                 <div className="text-[11px] font-bold leading-tight">{t(`badge_${n}` as TKey)}</div>
                 <div className="num text-[10px]">{t("badge_locked", { n })}</div>
