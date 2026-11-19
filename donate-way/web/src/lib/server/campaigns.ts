@@ -28,7 +28,7 @@ type CampaignRow = {
 
 async function statsFor(ids: string[]) {
   if (!ids.length) return new Map<string, { raised: number; donors: number; released: number }>();
-  const rows = must(await db().from("dw_campaign_stats").select("*").in("campaign_id", ids)) as {
+  const rows = must(await db().from("dw_campaign_stats_v2").select("*").in("campaign_id", ids)) as {
     campaign_id: string;
     raised: number;
     donors: number;

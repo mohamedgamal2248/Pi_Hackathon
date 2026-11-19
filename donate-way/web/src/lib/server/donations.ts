@@ -191,7 +191,7 @@ async function afterCompleted(payment: PiPayment, uid: string, meta: Meta, donat
   for (const id of ids) {
     const [{ data: c }, { data: s }] = await Promise.all([
       db().from("dw_campaigns").select("id,title,goal,status").eq("id", id).maybeSingle(),
-      db().from("dw_campaign_stats").select("raised").eq("campaign_id", id).maybeSingle(),
+      db().from("dw_campaign_stats_v2").select("raised").eq("campaign_id", id).maybeSingle(),
     ]);
     if (!c || !s || c.status !== "active" || Number(s.raised) < Number(c.goal)) continue;
     await db().from("dw_campaigns").update({ status: "funded" }).eq("id", id).eq("status", "active");

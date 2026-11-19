@@ -41,8 +41,8 @@ create index if not exists dw_items_donation_idx on public.dw_donation_items(don
 alter table public.dw_donation_items enable row level security;
 
 -- Campaign progress = 95% share of completed items.
-drop view if exists public.dw_campaign_stats;
-create view public.dw_campaign_stats with (security_invoker = true) as
+-- New name instead of replacing the v1 view (keeps the migration non-destructive).
+create or replace view public.dw_campaign_stats_v2 with (security_invoker = true) as
 select c.id as campaign_id,
        coalesce(sum(i.campaign_share) filter (where d.status = 'completed'), 0) as raised,
        count(distinct d.pi_uid) filter (where d.status = 'completed') as donors,
@@ -51,14 +51,10 @@ from public.dw_campaigns c
 left join public.dw_donation_items i on i.campaign_id = c.id
 left join public.dw_donations d on d.id = i.donation_id
 group by c.id;
-revoke all on public.dw_campaign_stats from anon, authenticated;
+revoke all on public.dw_campaign_stats_v2 from anon, authenticated;
 
--- Organizer flow is gone (admin creates campaigns); keep tables for history but they are unused.
-comment on table public.dw_organizers is 'unused since v2 (admin-only campaigns)';
-comment on table public.dw_tranches is 'unused since v2 (admin posts proof of spend)';
-comment on table public.dw_recurring is 'monthly sadaqa: coming soon (needs Pi subscriptions on Mainnet)';
 
 -- Public bucket for campaign and proof images. Uploads only through the server (signed upload URLs).
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values ('sanad', 'sanad', true, 5242880, array['image/webp', 'image/jpeg', 'image/png'])
-on conflict (id) do update set public = excluded.public, file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
+on conflict (id) do nothing;
