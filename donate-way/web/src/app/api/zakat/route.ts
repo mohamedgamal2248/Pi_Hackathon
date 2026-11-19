@@ -1,6 +1,6 @@
 import { db } from "@/lib/server/db";
 import { handler, HttpError, json, readJson, requireSession } from "@/lib/server/http";
-import { getPrices, NISAB_GOLD_GRAMS, tryOkxUsd, ZAKAT_RATE } from "@/lib/server/prices";
+import { getPrices, NISAB_GOLD_GRAMS, ZAKAT_RATE } from "@/lib/server/prices";
 import { walletBalances } from "@/lib/server/wallet";
 
 const HIJRI_YEAR_DAYS = 354;
@@ -15,17 +15,8 @@ export const GET = handler(async (request) => {
   const [prices, wallet] = await Promise.all([getPrices(), walletBalances(user.wallet_address)]);
 
   const pi = wallet.assets.find((a) => a.native)?.balance ?? 0;
-  const others = await Promise.all(
-    wallet.assets
-      .filter((a) => !a.native)
-      .map(async (a) => {
-        const usd = await tryOkxUsd(a.code);
-        return { code: a.code, issuer: a.issuer, balance: a.balance, usdPrice: usd, usdValue: usd == null ? null : usd * a.balance };
-      })
-  );
-
   const piUsdValue = pi * prices.piUsd;
-  const totalUsd = piUsdValue + others.reduce((s, o) => s + (o.usdValue ?? 0), 0);
+  const totalUsd = piUsdValue; // Pi only: other tokens on the chain are not priced
   const nisabUsd = prices.goldGramUsd * NISAB_GOLD_GRAMS;
   const aboveNisab = totalUsd >= nisabUsd;
   const zakatUsd = aboveNisab ? totalUsd * ZAKAT_RATE : 0;
@@ -40,7 +31,6 @@ export const GET = handler(async (request) => {
     address: `${user.wallet_address.slice(0, 4)}…${user.wallet_address.slice(-4)}`,
     walletExists: wallet.exists,
     pi,
-    others,
     prices: { piUsd: prices.piUsd, goldGramUsd: prices.goldGramUsd, at: prices.at },
     totalUsd,
     goldGrams: totalUsd / prices.goldGramUsd,

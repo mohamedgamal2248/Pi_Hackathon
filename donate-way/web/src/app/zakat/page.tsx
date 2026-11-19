@@ -13,7 +13,6 @@ type Zakat = {
   address: string;
   walletExists: boolean;
   pi: number;
-  others: { code: string; balance: number; usdValue: number | null }[];
   prices: { piUsd: number; goldGramUsd: number; at: string };
   totalUsd: number;
   goldGrams: number;
@@ -167,20 +166,6 @@ export default function ZakatPage() {
               <GoldMeter grams={z.goldGrams} nisab={z.nisab.grams} />
               <div className="mt-2 text-xs text-muted">{t("zakat_nisab", { pi: `${fmt(z.nisab.pi, 0)} π (${usd(z.nisab.usd)})` })}</div>
             </div>
-
-            {z.others.length > 0 && (
-              <div className="rounded-2xl bg-surface-2 p-3 text-sm">
-                <div className="mb-1 text-xs text-muted">{t("zakat_other_tokens")}</div>
-                {z.others.map((o) => (
-                  <div key={o.code} className="flex justify-between py-0.5">
-                    <span className="num">
-                      {fmt(o.balance)} {o.code}
-                    </span>
-                    <span className="text-xs text-muted">{o.usdValue == null ? t("zakat_no_price") : usd(o.usdValue)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
           </section>
 
           {!z.aboveNisab ? (
