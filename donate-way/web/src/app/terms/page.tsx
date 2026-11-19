@@ -21,7 +21,7 @@ export default function Terms() {
         </p>
         <h2 className="font-bold">3. الحملات</h2>
         <p>
-          كل الحملات بتتضاف بمعرفة إدارة سند بعد المراجعة. لو حملة اتلغت أو اتجمع لها أكتر من المطلوب، المبلغ الزيادة بيتحوّل للحملات الأكثر احتياجًا أو لحملة مشابهة.
+          كل الحملات بتتضاف بمعرفة إدارة سند بعد المراجعة. لو حملة اتلغت أو اتجمع لها أكتر من المطلوب، المبلغ الزيادة بيتحوّل لحملة تانية محتاجة دعم أو لحملة مشابهة.
         </p>
         <h2 className="font-bold">4. الزكاة</h2>
         <p>
@@ -52,7 +52,7 @@ export default function Terms() {
         publishes photos and receipts of the spending on the campaign page.
       </p>
       <h2 className="font-bold">3. Campaigns</h2>
-      <p>All campaigns are added by Sanad&apos;s administrators after review. If a campaign is cancelled or over-funded, the extra goes to the most in need or a similar campaign.</p>
+      <p>All campaigns are added by Sanad&apos;s administrators after review. If a campaign is cancelled or over-funded, the extra goes to another campaign that needs support or a similar campaign.</p>
       <h2 className="font-bold">4. Zakat</h2>
       <p>
         The zakat calculator is guidance only: it reads your wallet balance from the blockchain and Pi and gold prices from OKX, and uses a nisab of 85 g of gold and a
