@@ -182,6 +182,7 @@ async function afterCompleted(payment: PiPayment, uid: string, meta: Meta, donat
   // Ambassador ("سفير الخير"): the person whose link brought this donation earns points.
   if (referrer) {
     await awardPoints(referrer, payment.amount * 3, "referral", donationId);
+    if (count === 1) await awardPoints(referrer, 100, "referral_first", uid); // bonus when the invited friend gives for the first time
     await db().from("dw_users").update({ referred_by: referrer }).eq("pi_uid", uid).is("referred_by", null);
     await notify([
       { user_uid: referrer, title: "سفير الخير", body: `حد اتبرع بـ ${payment.amount} π من رابطك. شكرًا إنك بتنشر الخير!`, subroute: "/me" },

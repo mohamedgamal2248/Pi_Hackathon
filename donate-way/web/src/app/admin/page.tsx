@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AdminExtras } from "@/components/AdminExtras";
 import { StatusBadge } from "@/components/CampaignCard";
 import { Icon } from "@/components/Icon";
 import { Money } from "@/components/Money";
@@ -442,6 +443,8 @@ export default function AdminPage() {
           }}
         />
       )}
+
+      <AdminExtras campaigns={d.campaigns} />
 
       <section className="card divide-y divide-line">
         {d.campaigns.length === 0 && <p className="p-6 text-center text-muted">{t("empty")}</p>}

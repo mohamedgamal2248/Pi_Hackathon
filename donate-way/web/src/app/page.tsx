@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { CampaignCard, Cover, Progress } from "@/components/CampaignCard";
 import { Icon, type IconName } from "@/components/Icon";
 import { Money } from "@/components/Money";
+import { ChallengeCard } from "@/components/ChallengeCard";
 import { QuickDonate } from "@/components/QuickDonate";
 import { useLang, type TKey } from "@/lib/client/i18n";
 import { Reveal } from "@/lib/client/motion";
@@ -108,6 +109,8 @@ export default function HomePage() {
         </section>
         <QuickDonate />
       </div>
+
+      <ChallengeCard />
 
       {home && home.feed.length > 0 && <FeedTicker feed={home.feed} />}
 
@@ -233,6 +236,9 @@ export default function HomePage() {
               ))}
             </div>
           </div>
+          <Link href="/leaderboard" className="mb-2 block text-sm text-brand underline">
+            {t("view_all")}
+          </Link>
           {leaders.length === 0 && <p className="py-4 text-center text-sm text-muted">{t("no_donors")}</p>}
           <ol className="space-y-2">
             {leaders.map((l, i) => (

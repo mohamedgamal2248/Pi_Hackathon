@@ -21,6 +21,7 @@ type Me = {
   gifts: number;
   points: number;
   streak: { weeks: number; givenThisWeek: boolean };
+  daily: { days: number; best: number; givenToday: boolean };
   referralCode: string | null;
   referrals: { count: number; total: number };
   hasWallet: boolean;
@@ -127,6 +128,30 @@ export default function MePage() {
         <p className="text-xs text-muted">{t("points_note")}</p>
       </section>
 
+      {/* Daily streak + day badges */}
+      <section className="card space-y-3 p-5">
+        <h2 className="flex items-center gap-2 font-bold">
+          <Icon name="flame" className="text-brand" /> {t("streak")}
+        </h2>
+        <div className="flex items-end justify-between gap-2">
+          <div className="num text-4xl font-bold text-brand">{t("streak_days", { n: me.daily.days })}</div>
+          <div className="text-xs text-muted">{t("streak_best", { n: Math.max(me.daily.best, me.daily.days) })}</div>
+        </div>
+        <p className={`text-sm ${me.daily.givenToday ? "text-brand" : "text-muted"}`}>{me.daily.givenToday ? t("daily_done") : t("daily_keep")}</p>
+        <div className="grid grid-cols-4 gap-2 pt-1">
+          {([3, 7, 30, 100] as const).map((n) => {
+            const got = Math.max(me.daily.best, me.daily.days) >= n;
+            return (
+              <div key={n} className={`rounded-2xl p-2 text-center ${got ? "bg-brand-soft text-brand" : "bg-surface-2 text-muted opacity-60"}`}>
+                <Icon name="award" size={22} className="mx-auto" />
+                <div className="mt-1 text-[11px] font-bold">{t(`badge_${n}` as TKey)}</div>
+                <div className="num text-[10px]">{t("badge_locked", { n })}</div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
       {/* Weekly streak */}
       <section className="card space-y-3 p-5">
         <h2 className="flex items-center gap-2 font-bold">
@@ -168,6 +193,7 @@ export default function MePage() {
             </button>
           </div>
         )}
+        <p className="text-xs text-muted">{t("ambassador_bonus")}</p>
         <p className="text-sm">{t("ambassador_stats", { n: me.referrals.count, amount: pi(me.referrals.total) })}</p>
       </section>
 

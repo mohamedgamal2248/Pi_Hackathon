@@ -7,7 +7,7 @@ export const GET = handler(async (_request, ctx: RouteContext<"/api/donations/[i
   const id = uuid((await ctx.params).id, "id");
   const { data } = await db()
     .from("dw_donations")
-    .select("id,amount,campaign_share,platform_fee,anonymous,message,gift,is_zakat,txid,completed_at,status,dw_users(username),dw_donation_items(amount,campaign_share,fund,campaign_id,dw_campaigns(title,cover_url))")
+    .select("id,amount,campaign_share,platform_fee,anonymous,message,gift,is_zakat,txid,completed_at,status,dw_users!pi_uid(username),dw_donation_items(amount,campaign_share,fund,campaign_id,dw_campaigns(title,cover_url))")
     .eq("id", id)
     .maybeSingle();
   const d = data as unknown as {

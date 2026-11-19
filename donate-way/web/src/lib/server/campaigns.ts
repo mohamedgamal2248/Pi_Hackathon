@@ -85,7 +85,7 @@ export async function getCampaign(id: string, viewerUid?: string, includeHidden 
     db().from("dw_updates").select("id,kind,title,body,amount_spent,media,created_at").eq("campaign_id", id).order("created_at", { ascending: false }),
     db()
       .from("dw_donation_items")
-      .select("campaign_share,dw_donations!inner(anonymous,message,completed_at,status,dw_users(username))")
+      .select("campaign_share,dw_donations!inner(anonymous,message,completed_at,status,dw_users!pi_uid(username))")
       .eq("campaign_id", id)
       .eq("dw_donations.status", "completed")
       .order("id", { ascending: false })
@@ -143,7 +143,7 @@ export async function platformStats() {
 export async function recentFeed(limit = 12) {
   const { data } = await db()
     .from("dw_donations")
-    .select("amount,anonymous,completed_at,gift,campaign_id,fund,dw_users(username),dw_campaigns(title)")
+    .select("amount,anonymous,completed_at,gift,campaign_id,fund,dw_users!pi_uid(username),dw_campaigns(title)")
     .eq("status", "completed")
     .order("completed_at", { ascending: false })
     .limit(limit);
@@ -186,7 +186,7 @@ export async function latestProofs(limit = 6) {
 }
 
 export async function leaderboard(limit = 10, sinceDays?: number) {
-  let q = db().from("dw_donations").select("amount,pi_uid,dw_users(username)").eq("status", "completed").eq("anonymous", false);
+  let q = db().from("dw_donations").select("amount,pi_uid,dw_users!pi_uid(username)").eq("status", "completed").eq("anonymous", false);
   if (sinceDays) q = q.gte("completed_at", new Date(Date.now() - sinceDays * DAY).toISOString());
   const { data } = await q;
   const totals = new Map<string, { username: string; total: number; count: number }>();
@@ -197,4 +197,17 @@ export async function leaderboard(limit = 10, sinceDays?: number) {
     totals.set(row.pi_uid, t);
   }
   return [...totals.values()].sort((a, b) => b.total - a.total).slice(0, limit);
+}
+
+// Ambassadors: people whose invite links brought the most completed donations.
+export async function topInviters(limit = 10) {
+  const { data } = await db().from("dw_donations").select("amount,referrer_uid,dw_users!referrer_uid(username)").eq("status", "completed").not("referrer_uid", "is", null);
+  const totals = new Map<string, { username: string; total: number; count: number }>();
+  for (const row of (data ?? []) as unknown as { amount: number; referrer_uid: string; dw_users: { username: string } | null }[]) {
+    const t = totals.get(row.referrer_uid) ?? { username: row.dw_users?.username ?? "?", total: 0, count: 0 };
+    t.total += Number(row.amount);
+    t.count += 1;
+    totals.set(row.referrer_uid, t);
+  }
+  return [...totals.values()].sort((a, b) => b.count - a.count || b.total - a.total).slice(0, limit);
 }

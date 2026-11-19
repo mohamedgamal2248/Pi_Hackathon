@@ -3,6 +3,7 @@
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { Cover, Progress, StatusBadge } from "@/components/CampaignCard";
+import { Sheet } from "@/components/Sheet";
 import { DonateSheet } from "@/components/DonateSheet";
 import { Icon } from "@/components/Icon";
 import { Money } from "@/components/Money";
@@ -24,6 +25,9 @@ function CampaignView() {
   const [missing, setMissing] = useState(false);
   const [tab, setTab] = useState<Tab>(search.get("tab") === "proof" ? "proof" : "story");
   const [donateOpen, setDonateOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reason, setReason] = useState("");
+  const [reported, setReported] = useState(false);
   const [myRef, setMyRef] = useState<string | null>(null);
 
   const load = useCallback(() => {
@@ -44,6 +48,13 @@ function CampaignView() {
     if (!user && !(await signIn())) return;
     const r = await api<{ following: boolean }>(`/api/campaigns/${c.id}/follow`, { method: "POST", body: JSON.stringify({ follow: !c.following }) });
     setC({ ...c, following: r.following });
+  }
+
+  async function sendReport() {
+    if (!c || reason.trim().length < 3) return;
+    if (!user && !(await signIn())) return;
+    await api(`/api/campaigns/${c.id}/report`, { method: "POST", body: JSON.stringify({ reason: reason.trim() }) }).catch(() => undefined);
+    setReported(true);
   }
 
   if (missing) return <p className="py-20 text-center text-muted">404</p>;
@@ -103,6 +114,9 @@ function CampaignView() {
           <p className="flex items-start gap-2 text-xs text-muted">
             <Icon name="shield" size={16} className="mt-0.5 shrink-0" /> {t("how_2_b")} {t("policy_note")}
           </p>
+          <button className="text-xs text-muted underline" onClick={() => setReportOpen(true)}>
+            {t("report_campaign")}
+          </button>
         </div>
       </aside>
 
@@ -143,28 +157,56 @@ function CampaignView() {
         )}
 
         {tab === "proof" && (
-          <ol className="fade-in relative space-y-4 border-s-2 border-line ps-5">
-            {c.updates.length === 0 && <p className="text-muted">{t("no_updates")}</p>}
-            {c.updates.map((u) => (
-              <li key={u.id} className="relative">
-                <span className={`absolute -start-[29px] top-4 h-4 w-4 rounded-full border-4 border-bg ${u.kind === "proof_of_spend" ? "bg-gold" : "bg-brand"}`} />
-                <div className="card space-y-2 p-4">
-                  <div className="flex items-center justify-between text-xs text-muted">
-                    <span className={u.kind === "proof_of_spend" ? "font-bold text-gold" : ""}>{u.kind === "proof_of_spend" ? t("proof_of_spend") : t("update")}</span>
-                    <span>{date(u.created_at)}</span>
+          <div className="fade-in space-y-3">
+            {c.released > 0 && (
+              <div className="card flex items-center justify-between gap-3 p-4 text-sm">
+                <span className="flex items-center gap-2 font-bold text-gold">
+                  <Icon name="receipt" size={18} /> {t("timeline")}
+                </span>
+                <span className="num">{t("spent_total", { a: pi(c.released), b: pi(c.raised) })}</span>
+              </div>
+            )}
+            <ol className="relative space-y-4 border-s-2 border-line ps-5">
+              {(c.status === "funded" || c.status === "completed") && (
+                <li className="relative">
+                  <span className="absolute -start-[29px] top-3 h-4 w-4 rounded-full border-4 border-bg bg-brand" />
+                  <p className="font-bold text-brand">{t("tl_funded")}</p>
+                </li>
+              )}
+              {c.updates.length === 0 && <p className="text-muted">{t("no_updates")}</p>}
+              {c.updates.map((u) => (
+                <li key={u.id} className="relative">
+                  <span className={`absolute -start-[29px] top-4 h-4 w-4 rounded-full border-4 border-bg ${u.kind === "proof_of_spend" ? "bg-gold" : "bg-brand"}`} />
+                  <div className="card space-y-2 p-4">
+                    <div className="flex items-center justify-between text-xs text-muted">
+                      {u.kind === "proof_of_spend" ? (
+                        <span className="chip !min-h-7 !bg-gold-soft !text-gold">
+                          <Icon name="check" size={14} /> {t("spent_badge")}
+                        </span>
+                      ) : (
+                        <span>{t("update")}</span>
+                      )}
+                      <span>{date(u.created_at)}</span>
+                    </div>
+                    <h3 className="font-bold">{u.title}</h3>
+                    <p className="whitespace-pre-line text-sm leading-relaxed">{u.body}</p>
+                    {u.amount_spent != null && (
+                      <p className="text-sm text-gold">
+                        {t("spent")}: <b className="num">{pi(u.amount_spent)}</b>
+                      </p>
+                    )}
+                    {u.media.length > 0 && <PhotoGrid images={u.media} />}
                   </div>
-                  <h3 className="font-bold">{u.title}</h3>
-                  <p className="whitespace-pre-line text-sm leading-relaxed">{u.body}</p>
-                  {u.amount_spent != null && (
-                    <p className="text-sm text-gold">
-                      {t("spent")}: <b className="num">{pi(u.amount_spent)}</b>
-                    </p>
-                  )}
-                  {u.media.length > 0 && <PhotoGrid images={u.media} />}
-                </div>
+                </li>
+              ))}
+              <li className="relative">
+                <span className="absolute -start-[29px] top-1 h-4 w-4 rounded-full border-4 border-bg bg-line" />
+                <p className="text-sm text-muted">
+                  {t("tl_created")} · {date(c.created_at)}
+                </p>
               </li>
-            ))}
-          </ol>
+            </ol>
+          </div>
         )}
 
         {tab === "donors" && (
@@ -193,6 +235,21 @@ function CampaignView() {
           </button>
         </div>
         </Portal>
+      )}
+
+      {reportOpen && (
+        <Sheet title={t("report_campaign")} onClose={() => setReportOpen(false)}>
+          {reported ? (
+            <p className="py-4 text-center text-brand">{t("report_sent")}</p>
+          ) : (
+            <div className="space-y-3">
+              <textarea className="input min-h-24" maxLength={300} placeholder={t("report_ph")} value={reason} onChange={(e) => setReason(e.target.value)} />
+              <button className="btn btn-primary w-full" disabled={reason.trim().length < 3} onClick={sendReport}>
+                {t("report_send")}
+              </button>
+            </div>
+          )}
+        </Sheet>
       )}
 
       {donateOpen && <DonateSheet target={{ kind: "campaign", id: c.id, title: c.title, impactUnits: c.impact_units }} onClose={() => setDonateOpen(false)} onDone={load} />}

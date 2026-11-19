@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { useLang } from "@/lib/client/i18n";
 import { usePi } from "@/lib/client/pi";
-import { fmt, pi } from "@/lib/client/types";
+import { ShareCard } from "@/components/ShareCard";
+import { fmt, pi, shareUrl } from "@/lib/client/types";
 
 type Row = { id: string; amount: number; campaign_share: number; is_zakat: boolean; fund: string | null; completed_at: string; txid: string | null; dw_campaigns: { title: string } | null };
 
@@ -79,6 +80,20 @@ export default function ReportPage() {
             ))}
           </tbody>
         </table>
+        <ShareCard
+          className="btn btn-gold w-full"
+          shareText={t("invite_text")}
+          shareLink={shareUrl("/")}
+          spec={() => ({
+            kicker: t("card_year", { y: year }),
+            big: pi(total),
+            sub: `@${name}`,
+            rows: [`${rows.length} ${t("history")}`, `${new Set(rows.map((r) => r.dw_campaigns?.title ?? r.fund)).size} ${t("card_helped")}`, zakat > 0 ? `${t("zakat_paid")}: ${pi(zakat)}` : ""].filter(Boolean),
+            footer: t("card_footer"),
+            url: shareUrl("/").replace(/^https?:\/\//, ""),
+            rtl: lang === "ar",
+          })}
+        />
       </article>
       <button className="no-print btn btn-ghost w-full" onClick={() => window.print()}>
         <Icon name="receipt" size={18} /> {t("print")}

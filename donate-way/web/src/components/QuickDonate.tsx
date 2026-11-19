@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { DonateSheet } from "@/components/DonateSheet";
+import { useEffect, useState } from "react";
+import { DonateSheet, lastAmount } from "@/components/DonateSheet";
 import { Icon } from "@/components/Icon";
 import { useLang } from "@/lib/client/i18n";
 
@@ -11,6 +11,9 @@ export function QuickDonate() {
   const [fund, setFund] = useState<"general" | "zakat">("general");
   const [amount, setAmount] = useState(5);
   const [open, setOpen] = useState(false);
+  const [last, setLast] = useState<number | null>(null);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage is browser-only
+  useEffect(() => setLast(lastAmount()), []);
   const [adMsg, setAdMsg] = useState<string | null>(null);
 
   async function watchAd() {
@@ -42,6 +45,11 @@ export function QuickDonate() {
           </button>
         ))}
       </div>
+      {last && last !== amount && (
+        <button className="text-start text-sm text-brand underline" onClick={() => setAmount(last)}>
+          {t("repeat_last", { a: last })}
+        </button>
+      )}
       <p className="text-xs text-muted">{adMsg ?? t("quick_note")}</p>
       <div className="flex gap-2">
         <button className="btn btn-primary flex-1" onClick={() => setOpen(true)}>

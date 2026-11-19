@@ -8,13 +8,22 @@ import { Sheet } from "@/components/Sheet";
 import { useLang } from "@/lib/client/i18n";
 import { Confetti } from "@/lib/client/motion";
 import { ApiError, usePi, type DonationItem } from "@/lib/client/pi";
-import { fmt, shareUrl, sharePi, type ImpactUnit } from "@/lib/client/types";
+import { ShareCard } from "@/components/ShareCard";
+import { fmt, pi as piFmt, shareUrl, sharePi, type ImpactUnit } from "@/lib/client/types";
 
 export type DonateTarget =
   | { kind: "campaign"; id: string; title: string; impactUnits?: ImpactUnit[] }
   | { kind: "fund"; fund: "general" | "zakat"; title: string };
 
 
+export function lastAmount(): number | null {
+  try {
+    const v = Number(localStorage.getItem("sanad_last_amount"));
+    return v > 0 ? v : null;
+  } catch {
+    return null;
+  }
+}
 const QUICK = [1, 5, 10, 25];
 const FEE = 0.05;
 
@@ -31,11 +40,11 @@ export function DonateSheet({
   onClose: () => void;
   onDone?: () => void;
 }) {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const { donate, user, signIn, ready } = usePi();
   const units = target.kind === "campaign" ? target.impactUnits ?? [] : [];
 
-  const [amount, setAmount] = useState(String(initialAmount ? Number(initialAmount.toFixed(4)) : units[0]?.amount ?? 5));
+  const [amount, setAmount] = useState(String(initialAmount ? Number(initialAmount.toFixed(4)) : units[0]?.amount ?? lastAmount() ?? 5));
   const [anonymous, setAnonymous] = useState(false);
   const [message, setMessage] = useState("");
   const [giftOn, setGiftOn] = useState(false);
@@ -74,6 +83,11 @@ export function DonateSheet({
         zakat: zakat || (target.kind === "fund" && target.fund === "zakat"),
         gift: giftOn ? { type: giftType, name: giftName.trim(), note: giftNote.trim() || undefined } : null,
       });
+      try {
+        localStorage.setItem("sanad_last_amount", String(total));
+      } catch {
+        /* private mode */
+      }
       setDone({ amount: total, ...r });
       onDone?.();
     } catch (e) {
@@ -104,6 +118,20 @@ export function DonateSheet({
               <Icon name="heart" size={18} /> {t("invite_friend")}
             </button>
           )}
+          <ShareCard
+            className="btn btn-gold w-full"
+            shareText={t("invite_text")}
+            shareLink={shareUrl("/", user?.referralCode)}
+            spec={() => ({
+              kicker: t("card_gave"),
+              big: piFmt(done.amount),
+              sub: `${t("card_to")} ${title}`,
+              rows: [t("hero_sub")],
+              footer: t("card_footer"),
+              url: shareUrl("/", user?.referralCode).replace(/^https?:\/\//, ""),
+              rtl: lang === "ar",
+            })}
+          />
           <div className="grid grid-cols-2 gap-2">
             <Link href={`/receipt/${done.donationId}`} className="btn btn-ghost" onClick={onClose}>
               <Icon name="receipt" size={18} /> {t("view_receipt")}

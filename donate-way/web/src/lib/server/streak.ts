@@ -20,3 +20,27 @@ export function givingStreak(dates: (string | null)[]): { weeks: number; givenTh
   }
   return { weeks: count, givenThisWeek };
 }
+
+// Daily streak (Cairo time, UTC+2): consecutive days with a completed donation, ending today or yesterday.
+const DAY = 86_400_000;
+const dayIndex = (d: Date | string) => Math.floor((new Date(d).getTime() + 2 * 3_600_000) / DAY);
+
+export function dailyStreak(dates: (string | null)[]): { days: number; best: number; givenToday: boolean } {
+  const days = new Set(dates.filter(Boolean).map((d) => dayIndex(d!)));
+  const today = dayIndex(new Date());
+  const givenToday = days.has(today);
+  let d = givenToday ? today : today - 1;
+  let count = 0;
+  while (days.has(d)) {
+    count++;
+    d--;
+  }
+  const sorted = [...days].sort((a, b) => a - b);
+  let best = 0;
+  let run = 0;
+  sorted.forEach((x, i) => {
+    run = i > 0 && x === sorted[i - 1] + 1 ? run + 1 : 1;
+    best = Math.max(best, run);
+  });
+  return { days: count, best, givenToday };
+}

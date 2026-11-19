@@ -1,7 +1,7 @@
 import { db } from "@/lib/server/db";
 import { handler, isAdmin, json, requireSession } from "@/lib/server/http";
 import { pointsBalance } from "@/lib/server/points";
-import { givingStreak } from "@/lib/server/streak";
+import { dailyStreak, givingStreak } from "@/lib/server/streak";
 
 export const GET = handler(async (request) => {
   const session = requireSession(request);
@@ -35,6 +35,7 @@ export const GET = handler(async (request) => {
 
   const helped = new Set(list.flatMap((d) => d.dw_donation_items.map((i) => i.campaign_id)).filter(Boolean));
   const streak = givingStreak(list.map((d) => d.completed_at));
+  const daily = dailyStreak(list.map((d) => d.completed_at));
   const year = new Date().getFullYear();
 
   return json({
@@ -48,6 +49,7 @@ export const GET = handler(async (request) => {
     gifts: list.filter((d) => d.gift).length,
     points,
     streak,
+    daily,
     referralCode: user.data?.referral_code ?? null,
     referrals: { count: (referrals.data ?? []).length, total: (referrals.data ?? []).reduce((s, r) => s + Number(r.amount), 0) },
     hasWallet: !!user.data?.wallet_address,

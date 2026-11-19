@@ -2,7 +2,7 @@ import { db } from "@/lib/server/db";
 import { env } from "@/lib/server/env";
 import { handler, HttpError, json } from "@/lib/server/http";
 import { notify, type PiNotification } from "@/lib/server/pi";
-import { weekIndex } from "@/lib/server/streak";
+import { dailyStreak, weekIndex } from "@/lib/server/streak";
 
 const HIJRI_YEAR_DAYS = 354;
 const DAY = 86_400_000;
@@ -49,6 +49,17 @@ export const GET = handler(async (request) => {
     }
     for (const uid of lastWeek) {
       if (!thisWeek.has(uid)) out.push({ user_uid: uid, title: "كمّل سلسلة عطائك", body: "أي تبرع ولو 0.1 π قبل الجمعة بيحافظ على سلسلتك.", subroute: "/" });
+    }
+  }
+
+  // Daily streak at risk: donors with a streak of 3+ days who haven't given today.
+  {
+    const { data } = await db().from("dw_donations").select("pi_uid,completed_at").eq("status", "completed").gte("completed_at", new Date(Date.now() - 40 * DAY).toISOString());
+    const byUser = new Map<string, string[]>();
+    for (const d of data ?? []) byUser.set(d.pi_uid, [...(byUser.get(d.pi_uid) ?? []), d.completed_at]);
+    for (const [uid, dates] of byUser) {
+      const s = dailyStreak(dates);
+      if (s.days >= 3 && !s.givenToday) out.push({ user_uid: uid, title: `سلسلتك ${s.days} يوم`, body: "تبرع بأي مبلغ النهاردة وكمّل سلسلة الخير.", subroute: "/" });
     }
   }
 
