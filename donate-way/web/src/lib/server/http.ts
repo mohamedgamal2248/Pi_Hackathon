@@ -3,7 +3,7 @@ import { connection, NextResponse } from "next/server";
 import { readSession, type Session } from "./session";
 import { db } from "./db";
 import { env } from "./env";
-import { withNetwork } from "./network";
+import { isTestnet, withNetwork } from "./network";
 
 export class HttpError extends Error {
   constructor(public status: number, message: string) {
@@ -22,6 +22,7 @@ export function requireSession(request: Request): Session {
 }
 
 export async function isAdmin(uid: string): Promise<boolean> {
+  if (isTestnet()) return true; // Staging holds Test-Pi and test data only: every tester can open /admin
   if (env.adminUids().includes(uid)) return true;
   const { data } = await db().from("dw_users").select("is_admin").eq("pi_uid", uid).maybeSingle();
   return !!data?.is_admin;
