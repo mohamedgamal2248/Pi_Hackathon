@@ -20,10 +20,21 @@ function raw(): SupabaseClient {
 const rename = (s: string) => s.replace(/\bdw_/g, "dwt_");
 const VALUE_METHODS = new Set(["insert", "upsert", "update"]);
 
+// Embedded relations come back keyed by the real table (dwt_campaigns); map keys back to dw_* so callers don't care.
+function unrename(v: unknown): unknown {
+  if (Array.isArray(v)) return v.map(unrename);
+  if (v && typeof v === "object") return Object.fromEntries(Object.entries(v).map(([k, x]) => [k.replace(/^dwt_/, "dw_"), unrename(x)]));
+  return v;
+}
+
 function wrapBuilder<T extends object>(target: T): T {
   return new Proxy(target, {
     get(obj, prop, receiver) {
       const value = Reflect.get(obj, prop, receiver);
+      if (prop === "then" && typeof value === "function") {
+        return (ok?: (r: unknown) => unknown, bad?: (e: unknown) => unknown) =>
+          value.call(obj, ok ? (r: { data?: unknown }) => ok(r && typeof r === "object" && "data" in r ? { ...r, data: unrename(r.data) } : r) : ok, bad);
+      }
       if (typeof value !== "function" || prop === "then" || prop === "catch" || prop === "finally") {
         return typeof value === "function" ? value.bind(obj) : value;
       }
