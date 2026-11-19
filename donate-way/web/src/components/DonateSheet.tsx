@@ -25,18 +25,19 @@ export function lastAmount(): number | null {
   }
 }
 const QUICK = [1, 5, 10, 25];
-const FEE = 0.05;
 
 export function DonateSheet({
   target,
   initialAmount,
   zakat = false,
+  presetMemorial,
   onClose,
   onDone,
 }: {
   target: DonateTarget;
   initialAmount?: number;
   zakat?: boolean;
+  presetMemorial?: { name: string; note?: string };
   onClose: () => void;
   onDone?: () => void;
 }) {
@@ -47,18 +48,16 @@ export function DonateSheet({
   const [amount, setAmount] = useState(String(initialAmount ? Number(initialAmount.toFixed(4)) : units[0]?.amount ?? lastAmount() ?? 5));
   const [anonymous, setAnonymous] = useState(false);
   const [message, setMessage] = useState("");
-  const [giftOn, setGiftOn] = useState(false);
-  const [giftType, setGiftType] = useState<"gift" | "memorial">("gift");
-  const [giftName, setGiftName] = useState("");
-  const [giftNote, setGiftNote] = useState("");
+  const [giftOn, setGiftOn] = useState(!!presetMemorial);
+  const [giftType, setGiftType] = useState<"gift" | "memorial">(presetMemorial ? "memorial" : "gift");
+  const [giftName, setGiftName] = useState(presetMemorial?.name ?? "");
+  const [giftNote, setGiftNote] = useState(presetMemorial?.note ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<{ amount: number; txid: string; donationId: string } | null>(null);
 
   const total = Number(amount);
   const valid = Number.isFinite(total) && total >= 0.01 && (!giftOn || giftName.trim().length > 0);
-  const share = Math.round(total * (1 - FEE) * 1e7) / 1e7;
-  const fee = Math.round((total - share) * 1e7) / 1e7;
   const title = target.title;
   const noSdk = ready && typeof window !== "undefined" && !window.Pi;
 
@@ -180,23 +179,6 @@ export function DonateSheet({
               <input className="input num text-xl font-bold" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))} />
             </label>
           </>
-        )}
-
-        {total > 0 && (
-          <div className="rounded-2xl border border-line p-3 text-sm">
-            <div className="flex items-baseline justify-between gap-2">
-              <span className="text-muted">{t("your_donation")}</span>
-              <Money value={total} />
-            </div>
-            <div className="mt-1.5 flex justify-between">
-              <span className="text-muted">{t("split_campaign")} · 95%</span>
-              <span className="num font-bold text-brand">{fmt(share, 4)} π</span>
-            </div>
-            <div className="mt-1 flex justify-between text-xs text-muted">
-              <span>{t("split_platform")} · 5%</span>
-              <span className="num">{fmt(fee, 4)} π</span>
-            </div>
-          </div>
         )}
 
         <textarea className="input" rows={2} maxLength={280} placeholder={t("message_optional")} value={message} onChange={(e) => setMessage(e.target.value)} />

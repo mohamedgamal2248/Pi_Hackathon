@@ -101,6 +101,12 @@ export function Shell({ children }: { children: ReactNode }) {
           <Link href="/transparency" className="py-2">
             {t("transparency")}
           </Link>
+          <Link href="/season" className="py-2">
+            {t("season")}
+          </Link>
+          <Link href="/jariya" className="py-2">
+            {t("jariya")}
+          </Link>
           <Link href="/leaderboard" className="py-2">
             {t("leaderboard")}
           </Link>

@@ -11,7 +11,7 @@ import { usePi } from "@/lib/client/pi";
 import { isStagingHost, openExternal, pi, type Proof } from "@/lib/client/types";
 
 type Data = {
-  stats: { total: number; toCampaigns: number; platformFees: number; donors: number; donations: number; campaigns: number; released: number };
+  stats: { total: number; donors: number; donations: number; campaigns: number; released: number };
   proofs: Proof[];
   months: { month: string; total: number }[];
   appWallet: { address: string; balance: number | null } | null;
@@ -29,7 +29,6 @@ export default function TransparencyPage() {
   if (!d) return <div className="card h-96 animate-pulse" />;
   const s = d.stats;
   const max = Math.max(1, ...d.months.map((m) => m.total));
-  const sharePct = s.total > 0 ? (s.toCampaigns / s.total) * 100 : 95;
   const date = (x: string) => new Date(x).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-GB", { day: "numeric", month: "short" });
 
   return (
@@ -49,16 +48,12 @@ export default function TransparencyPage() {
           </div>
         </div>
         <div className="card p-4">
-          <div className="text-xs text-muted">{t("to_campaigns")}</div>
-          <div className="text-2xl text-brand">
-            <Money value={s.toCampaigns} animate />
-          </div>
+          <div className="text-xs text-muted">{t("donors")}</div>
+          <div className="num text-2xl font-bold text-brand">{s.donors}</div>
         </div>
         <div className="card p-4">
-          <div className="text-xs text-muted">{t("platform_fees")}</div>
-          <div className="text-2xl">
-            <Money value={s.platformFees} animate />
-          </div>
+          <div className="text-xs text-muted">{t("history")}</div>
+          <div className="num text-2xl font-bold">{s.donations}</div>
         </div>
         <div className="card p-4">
           <div className="text-xs text-muted">{t("spent_with_proof")}</div>
@@ -67,22 +62,6 @@ export default function TransparencyPage() {
           </div>
         </div>
       </div>
-
-      {/* 95 / 5 bar */}
-      <Reveal className="card space-y-3 p-5">
-        <div className="flex h-4 overflow-hidden rounded-full">
-          <div className="bg-brand" style={{ width: `${sharePct}%` }} />
-          <div className="flex-1 bg-gold" />
-        </div>
-        <div className="flex justify-between text-sm">
-          <span className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded-full bg-brand" /> {t("to_campaigns")}
-          </span>
-          <span className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded-full bg-gold" /> {t("platform_fees")}
-          </span>
-        </div>
-      </Reveal>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Reveal as="section" className="card p-5">

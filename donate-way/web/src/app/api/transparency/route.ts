@@ -5,7 +5,7 @@ import { isTestnet } from "@/lib/server/network";
 import { getPrices } from "@/lib/server/prices";
 import { walletBalances, WALLET_RE } from "@/lib/server/wallet";
 
-// Public transparency page: totals, the 95/5 split, money spent with proof, monthly breakdown,
+// Public transparency page: totals, money spent with proof, monthly breakdown,
 // and the app wallet's live balance read from the Pi blockchain.
 export const GET = handler(async () => {
   const appWallet = (isTestnet() ? process.env.APP_WALLET_ADDRESS_TESTNET : process.env.APP_WALLET_ADDRESS) ?? "";
@@ -23,8 +23,11 @@ export const GET = handler(async () => {
     byMonth.set(key, (byMonth.get(key) ?? 0) + Number(d.amount));
   }
 
+  const { toCampaigns: _t, platformFees: _p, ...publicStats } = stats;
+  void _t;
+  void _p;
   return json({
-    stats,
+    stats: publicStats,
     proofs,
     piUsd: prices?.piUsd ?? null,
     months: [...byMonth.entries()].sort().map(([month, total]) => ({ month, total })),

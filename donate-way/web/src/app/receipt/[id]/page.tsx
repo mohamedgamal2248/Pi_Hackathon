@@ -12,8 +12,6 @@ import { explorerTx, fmt, openExternal, shareUrl, sharePi } from "@/lib/client/t
 export type PublicDonation = {
   id: string;
   amount: number;
-  campaignShare: number;
-  platformFee: number;
   donor: string | null;
   message: string | null;
   gift: { type: "gift" | "memorial"; name: string; note: string | null } | null;
@@ -80,16 +78,6 @@ export default function ReceiptPage() {
               <dd className="num shrink-0">{fmt(i.amount)} π</dd>
             </div>
           ))}
-          <div className="border-t border-dashed border-line pt-2.5">
-            <div className="flex justify-between">
-              <dt className="text-muted">{t("split_campaign")} · 95%</dt>
-              <dd className="num font-bold text-brand">{fmt(d.campaignShare, 4)} π</dd>
-            </div>
-            <div className="mt-1 flex justify-between text-xs">
-              <dt className="text-muted">{t("split_platform")} · 5%</dt>
-              <dd className="num">{fmt(d.platformFee, 4)} π</dd>
-            </div>
-          </div>
           {d.txid && (
             <div className="border-t border-dashed border-line pt-2.5">
               <dt className="text-muted">{t("tx")}</dt>

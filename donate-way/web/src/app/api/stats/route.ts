@@ -12,5 +12,8 @@ export const GET = handler(async () => {
     leaderboard(5, 7),
     getPrices().catch(() => null),
   ]);
-  return json({ stats, feed, proofs, leaderboard: top, leaderboardWeek: week, piUsd: prices?.piUsd ?? null });
+  const { toCampaigns: _t, platformFees: _p, ...publicStats } = stats;
+  void _t;
+  void _p;
+  return json({ stats: publicStats, feed, proofs, leaderboard: top, leaderboardWeek: week, piUsd: prices?.piUsd ?? null });
 });

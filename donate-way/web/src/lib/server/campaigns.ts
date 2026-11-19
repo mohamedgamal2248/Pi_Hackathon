@@ -102,7 +102,7 @@ export async function getCampaign(id: string, viewerUid?: string, includeHidden 
     db().from("dw_updates").select("id,kind,title,body,amount_spent,media,created_at").eq("campaign_id", id).order("created_at", { ascending: false }),
     db()
       .from("dw_donation_items")
-      .select("campaign_share,dw_donations!inner(anonymous,message,completed_at,status,pi_uid)")
+      .select("amount,dw_donations!inner(anonymous,message,completed_at,status,pi_uid)")
       .eq("campaign_id", id)
       .eq("dw_donations.status", "completed")
       .order("id", { ascending: false })
@@ -114,12 +114,12 @@ export async function getCampaign(id: string, viewerUid?: string, includeHidden 
 
   const names = await usernames(((items.data ?? []) as unknown as { dw_donations: { pi_uid: string } }[]).map((d) => d.dw_donations.pi_uid));
   const recentDonors = ((items.data ?? []) as unknown as {
-    campaign_share: number;
+    amount: number;
     dw_donations: { anonymous: boolean; message: string | null; completed_at: string; pi_uid: string };
   }[])
     .map((d) => ({
       name: d.dw_donations.anonymous ? null : names.get(d.dw_donations.pi_uid) ?? null,
-      amount: Number(d.campaign_share),
+      amount: Number(d.amount),
       message: d.dw_donations.message,
       at: d.dw_donations.completed_at,
     }))

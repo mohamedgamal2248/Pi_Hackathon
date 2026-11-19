@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { CampaignCard, Cover, Progress } from "@/components/CampaignCard";
 import { Icon, type IconName } from "@/components/Icon";
 import { Money } from "@/components/Money";
+import { HomeTiles } from "@/components/HomeTiles";
 import { ChallengeCard } from "@/components/ChallengeCard";
 import { QuickDonate } from "@/components/QuickDonate";
 import { useLang, type TKey } from "@/lib/client/i18n";
@@ -109,6 +110,8 @@ export default function HomePage() {
         </section>
         <QuickDonate />
       </div>
+
+      <HomeTiles />
 
       <ChallengeCard />
 

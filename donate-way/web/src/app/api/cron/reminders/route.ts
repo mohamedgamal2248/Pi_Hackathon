@@ -3,6 +3,7 @@ import { db } from "@/lib/server/db";
 import { env } from "@/lib/server/env";
 import { handler, HttpError, json } from "@/lib/server/http";
 import { notify, type PiNotification } from "@/lib/server/pi";
+import { currentSeason, hijri } from "@/lib/server/season";
 import { dailyStreak, weekIndex } from "@/lib/server/streak";
 
 const HIJRI_YEAR_DAYS = 354;
@@ -63,6 +64,36 @@ export const GET = handler(async (request) => {
     for (const [uid, dates] of byUser) {
       const s = dailyStreak(dates);
       if (s.days >= 3 && !s.givenToday) out.push({ user_uid: uid, title: `سلسلتك ${s.days} يوم`, body: "تبرع بأي مبلغ النهاردة وكمّل سلسلة الخير.", subroute: "/" });
+    }
+  }
+
+  // Sadaqa jariya: on the yearly anniversary of a memorial gift, remind the giver.
+  {
+    const { data } = await db().from("dw_donations").select("pi_uid,gift,completed_at").eq("status", "completed").not("gift", "is", null);
+    const cairo = (iso: string) => new Date(new Date(iso).getTime() + 2 * 3_600_000).toISOString().slice(5, 10);
+    const todayMd = cairo(new Date().toISOString());
+    const thisYear = new Date().getUTCFullYear();
+    for (const d of (data ?? []) as { pi_uid: string; gift: { type?: string; name?: string } | null; completed_at: string }[]) {
+      if (d.gift?.type !== "memorial" || !d.completed_at || new Date(d.completed_at).getUTCFullYear() >= thisYear || cairo(d.completed_at) !== todayMd) continue;
+      out.push({ user_uid: d.pi_uid, title: "ذكرى صدقة جارية", body: `النهارده سنة على صدقتك عن ${String(d.gift.name ?? "").slice(0, 40)}. كمّل الأجر بصدقة جديدة.`, subroute: "/jariya" });
+    }
+  }
+
+  // Seasons: Friday morning (Cairo) and the first day of Ramadan / the last ten nights, for people who gave in the last 30 days.
+  {
+    const season = currentSeason();
+    const h = hijri(new Date());
+    const msg =
+      season.kind === "ramadan" && h.d === 1
+        ? { title: "رمضان كريم", body: "بدأ شهر الخير. شوف هدف المجتمع وكمّل سلسلتك." }
+        : season.kind === "ramadan" && h.d === 21
+          ? { title: "العشر الأواخر", body: "أفضل أيام العطاء بدأت. اتبرع وخد شارة العشر الأواخر." }
+          : season.kind === "friday"
+            ? { title: "جمعة الخير", body: "شارك في هدف الجمعة النهارده، ولو بـ 0.1 π." }
+            : null;
+    if (msg) {
+      const { data } = await db().from("dw_donations").select("pi_uid").eq("status", "completed").gte("completed_at", new Date(Date.now() - 30 * DAY).toISOString());
+      for (const uid of new Set((data ?? []).map((d) => d.pi_uid as string))) out.push({ user_uid: uid, ...msg, subroute: "/season" });
     }
   }
 
