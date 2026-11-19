@@ -3,6 +3,7 @@ import { connection, NextResponse } from "next/server";
 import { readSession, type Session } from "./session";
 import { db } from "./db";
 import { env } from "./env";
+import { withNetwork } from "./network";
 
 export class HttpError extends Error {
   constructor(public status: number, message: string) {
@@ -45,7 +46,7 @@ export function handler<C>(fn: (request: Request, ctx: C) => Promise<Response>) 
   return async (request: Request, ctx: C) => {
     try {
       await connection(); // always run at request time, never prerendered at build
-      return await fn(request, ctx);
+      return await withNetwork(request, () => fn(request, ctx));
     } catch (err) {
       if (err instanceof HttpError) return json({ error: err.message }, err.status);
       console.error(err);

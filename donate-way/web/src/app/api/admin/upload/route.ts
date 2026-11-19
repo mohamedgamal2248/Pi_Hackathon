@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { db } from "@/lib/server/db";
 import { env } from "@/lib/server/env";
 import { handler, HttpError, json, requireAdmin } from "@/lib/server/http";
+import { isTestnet } from "@/lib/server/network";
 
 const MAX_BYTES = 4 * 1024 * 1024;
 
@@ -26,7 +27,7 @@ export const POST = handler(async (request) => {
   if (!kind) throw new HttpError(415, "images_only");
 
   const folder = form?.get("folder") === "proofs" ? "proofs" : "campaigns";
-  const path = `${folder}/${new Date().toISOString().slice(0, 7)}/${randomUUID()}.${kind.ext}`;
+  const path = `${isTestnet() ? "staging/" : ""}${folder}/${new Date().toISOString().slice(0, 7)}/${randomUUID()}.${kind.ext}`;
   const { error } = await db().storage.from("sanad").upload(path, bytes, { contentType: kind.type, cacheControl: "31536000", upsert: false });
   if (error) throw new Error(error.message);
   return json({ path, url: `${env.supabaseUrl()}/storage/v1/object/public/sanad/${path}` }, 201);

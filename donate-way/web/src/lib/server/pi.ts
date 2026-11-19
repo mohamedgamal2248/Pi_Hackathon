@@ -1,5 +1,6 @@
 import "server-only";
 import { env } from "./env";
+import { isTestnet } from "./network";
 
 const BASE = "https://api.minepi.com/v2";
 
@@ -46,7 +47,15 @@ async function call<T>(path: string, init: RequestInit & { auth: string }): Prom
   return (text ? JSON.parse(text) : {}) as T;
 }
 
-const serverKey = () => `Key ${env.piApiKey()}`;
+// Testnet staging app has its own API key.
+const serverKey = () => {
+  if (isTestnet()) {
+    const k = process.env.PI_API_KEY_TESTNET;
+    if (!k) throw new Error("Missing environment variable PI_API_KEY_TESTNET");
+    return `Key ${k}`;
+  }
+  return `Key ${env.piApiKey()}`;
+};
 
 // The only trusted way to know who the user is: ask Pi with their access token.
 export function verifyAccessToken(accessToken: string) {

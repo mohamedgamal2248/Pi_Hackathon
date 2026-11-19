@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { isStagingHost } from "@/lib/client/types";
 import { DonateSheet } from "@/components/DonateSheet";
 import { Icon, type IconName } from "@/components/Icon";
 import { useCart } from "@/lib/client/cart";
@@ -40,6 +41,9 @@ export function Shell({ children }: { children: ReactNode }) {
   const cart = useCart();
   const path = usePathname();
   const [quick, setQuick] = useState(false);
+  const [staging, setStaging] = useState(false);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- hostname is only known in the browser
+  useEffect(() => setStaging(isStagingHost()), []);
   const isActive = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
   const mobileNav = [NAV[0], NAV[1], null, NAV[2], NAV[3]];
 
@@ -48,6 +52,11 @@ export function Shell({ children }: { children: ReactNode }) {
       <a href="#main" className="sr-only z-50 rounded-xl bg-brand px-4 py-2 font-bold text-brand-ink focus:not-sr-only focus:fixed focus:start-4 focus:top-4">
         {t("skip_to_content")}
       </a>
+      {staging && (
+        <div className="bg-gold px-4 py-1 text-center text-xs font-bold text-brand-ink" role="status">
+          TESTNET · Sanad Staging · Test-Pi only
+        </div>
+      )}
       <header className="sticky top-0 z-30 border-b border-line bg-bg/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-2.5 sm:px-6">
           <Link href="/" className="flex items-baseline gap-2 text-2xl font-bold" aria-label={t("app_name")}>

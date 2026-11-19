@@ -32,7 +32,17 @@ const PiContext = createContext<Ctx | null>(null);
 // All permissions are asked once, together, at the first sign-in. Pi remembers the consent, so later
 // sign-ins (needed by the SDK on every page load before a payment) happen silently.
 const SCOPES = ["username", "payments", "wallet_address", "in_app_notifications"];
-const SANDBOX = process.env.NEXT_PUBLIC_PI_SANDBOX === "true";
+// Sandbox mode: forced by env, or on the staging (Testnet) domain when the Pi Sandbox opens the app
+// (development URL ends with ?sandbox=1, or the frame's referrer is sandbox.minepi.com). Pi Browser: off.
+function detectSandbox() {
+  if (process.env.NEXT_PUBLIC_PI_SANDBOX === "true") return true;
+  if (typeof window === "undefined" || !/sanad-pi-staging\.vercel\.app$/.test(window.location.hostname)) return false;
+  try {
+    if (new URLSearchParams(window.location.search).get("sandbox") === "1") sessionStorage.setItem("sanad_sandbox", "1");
+    if (sessionStorage.getItem("sanad_sandbox") === "1") return true;
+  } catch {}
+  return window.self !== window.top && /sandbox\.minepi\.com/.test(document.referrer || "");
+}
 const CONSENT_KEY = "sanad_consented";
 const REF_KEY = "sanad_ref";
 
@@ -133,7 +143,7 @@ export function PiProvider({ children }: { children: ReactNode }) {
       if (window.Pi) {
         clearInterval(timer);
         try {
-          await window.Pi.init({ version: "2.0", sandbox: SANDBOX });
+          await window.Pi.init({ version: "2.0", sandbox: detectSandbox() });
         } catch {}
         if (cancelled) return;
         setReady(true);

@@ -1,13 +1,14 @@
 import { latestProofs, platformStats } from "@/lib/server/campaigns";
 import { db } from "@/lib/server/db";
 import { handler, json } from "@/lib/server/http";
+import { isTestnet } from "@/lib/server/network";
 import { getPrices } from "@/lib/server/prices";
 import { walletBalances, WALLET_RE } from "@/lib/server/wallet";
 
 // Public transparency page: totals, the 95/5 split, money spent with proof, monthly breakdown,
 // and the app wallet's live balance read from the Pi blockchain.
 export const GET = handler(async () => {
-  const appWallet = process.env.APP_WALLET_ADDRESS ?? "";
+  const appWallet = (isTestnet() ? process.env.APP_WALLET_ADDRESS_TESTNET : process.env.APP_WALLET_ADDRESS) ?? "";
   const [stats, proofs, prices, monthly, wallet] = await Promise.all([
     platformStats(),
     latestProofs(12),

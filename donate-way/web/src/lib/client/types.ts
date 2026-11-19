@@ -70,7 +70,7 @@ export const lines = (s: string) =>
 
 // Shareable links point at the app's pinet.com address (opens in Pi Browser), not the hosting URL.
 export function shareUrl(path: string, ref?: string | null): string {
-  const base = process.env.NEXT_PUBLIC_PI_URL || (typeof window !== "undefined" ? window.location.origin : "");
+  const base = (typeof window !== "undefined" && isStagingHost() ? window.location.origin : process.env.NEXT_PUBLIC_PI_URL) || (typeof window !== "undefined" ? window.location.origin : "");
   const url = `${base.replace(/\/$/, "")}${path}`;
   return ref ? `${url}${url.includes("?") ? "&" : "?"}ref=${ref}` : url;
 }
@@ -89,4 +89,6 @@ export function openExternal(url: string) {
   if (window.Pi?.openUrlInSystemBrowser) window.Pi.openUrlInSystemBrowser(url).catch(() => window.open(url, "_blank", "noopener"));
   else window.open(url, "_blank", "noopener");
 }
-export const explorerTx = (txid: string) => `https://blockexplorer.minepi.com/mainnet/transactions/${txid}`;
+// The staging domain serves the "Sanad Staging" Testnet app.
+export const isStagingHost = () => typeof window !== "undefined" && /(^|\.)sanad-pi-staging\.vercel\.app$|localhost-staging/.test(window.location.hostname);
+export const explorerTx = (txid: string) => `https://blockexplorer.minepi.com/${isStagingHost() ? "testnet" : "mainnet"}/transactions/${txid}`;
