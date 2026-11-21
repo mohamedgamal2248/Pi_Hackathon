@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { DocViewer } from "@/components/DocViewer";
 import { Icon } from "@/components/Icon";
 import { useLang } from "@/lib/client/i18n";
 import { nt, needError, type NeedKey } from "@/lib/client/need-i18n";
@@ -78,15 +79,7 @@ function Card({ r, reload }: { r: AdminReq; reload: () => void }) {
       {r.docs.length > 0 && (
         <div className="space-y-1.5">
           <h3 className="text-xs font-bold">{nt(lang, "a_docs")}</h3>
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-            {r.docs.map((d) => (
-              <a key={d.id} href={d.url} target="_blank" rel="noopener noreferrer" className="relative block aspect-square overflow-hidden rounded-xl bg-surface-2">
-                {/* eslint-disable-next-line @next/next/no-img-element -- short-lived signed URL from private storage */}
-                <img src={d.url} alt={d.kind} className="h-full w-full object-cover" loading="lazy" />
-                <span className="absolute bottom-1 start-1 rounded bg-bg/80 px-1 text-[10px]">{d.kind}</span>
-              </a>
-            ))}
-          </div>
+          <DocViewer docs={r.docs.map((d) => ({ id: d.id, url: d.url, label: d.kind }))} />
         </div>
       )}
 

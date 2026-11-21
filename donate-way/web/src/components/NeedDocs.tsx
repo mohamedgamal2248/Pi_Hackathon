@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { DocViewer } from "@/components/DocViewer";
 import { Icon } from "@/components/Icon";
 import { compressImage } from "@/lib/client/image";
 import { useLang } from "@/lib/client/i18n";
@@ -50,17 +51,18 @@ export function NeedDocs({ requestId, docs, kind, onChanged }: { requestId: stri
   return (
     <div className="space-y-3">
       {mine.length > 0 && (
-        <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-          {mine.map((d) => (
-            <li key={d.id} className="relative aspect-square overflow-hidden rounded-xl bg-surface-2">
-              {/* eslint-disable-next-line @next/next/no-img-element -- short-lived signed URL from private storage */}
-              <img src={d.url} alt="" className="h-full w-full object-cover" />
-              <button type="button" onClick={() => remove(d.id)} className="absolute end-1 top-1 grid h-8 w-8 place-items-center rounded-full bg-bg/85 text-danger" aria-label={nt(lang, "proof_remove")}>
-                <Icon name="trash" size={16} />
-              </button>
-            </li>
-          ))}
-        </ul>
+        <div className="space-y-1.5">
+          <DocViewer docs={mine.map((d) => ({ id: d.id, url: d.url }))} />
+          <ul className="flex flex-wrap gap-2">
+            {mine.map((d, i) => (
+              <li key={d.id}>
+                <button type="button" onClick={() => remove(d.id)} className="inline-flex min-h-9 items-center gap-1 rounded-full bg-surface-2 px-3 text-xs text-danger">
+                  <Icon name="trash" size={14} /> {nt(lang, "proof_remove")} {i + 1}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
       <input ref={input} type="file" accept="image/*" multiple className="sr-only" id={`docs-${kind}-${requestId}`} onChange={(e) => add(e.target.files)} />
       <label htmlFor={`docs-${kind}-${requestId}`} className={`btn btn-ghost w-full cursor-pointer ${busy || mine.length >= MAX_DOCS ? "pointer-events-none opacity-50" : ""}`}>

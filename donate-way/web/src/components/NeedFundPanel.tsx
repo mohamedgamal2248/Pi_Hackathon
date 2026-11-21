@@ -1,5 +1,6 @@
 "use client";
 
+import { DocViewer } from "@/components/DocViewer";
 import { Icon } from "@/components/Icon";
 import { NeedBadge } from "@/components/CampaignCard";
 import { useLang } from "@/lib/client/i18n";
@@ -47,12 +48,7 @@ export function NeedFundPanel({ need }: { need: NeedFund }) {
         <div className="space-y-2">
           <h3 className="text-sm font-bold">{nt(lang, "fund_proof")}</h3>
           {need.proofVisible && need.proof.length > 0 ? (
-            <div className="grid gap-2 sm:grid-cols-2">
-              {need.proof.map((p, i) => (
-                // eslint-disable-next-line @next/next/no-img-element -- short-lived signed URL from private storage, must not go through the image cache
-                <img key={p.id} src={p.url} alt={`${nt(lang, "fund_proof")} ${i + 1}`} loading="lazy" className="w-full rounded-xl bg-surface-2" />
-              ))}
-            </div>
+            <DocViewer docs={need.proof.map((p) => ({ id: p.id, url: p.url }))} />
           ) : (
             <p className="text-xs text-muted">{nt(lang, "fund_proof_donors")}</p>
           )}
