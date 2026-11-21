@@ -1,3 +1,5 @@
+import { NeedPrivacyItem } from "@/components/NeedPrivacyItem";
+
 export const metadata = { title: "Privacy Policy · Sanad" };
 
 // English privacy policy (also the page referenced by the Pi Mainnet listing). Kept in sync with what the app actually stores.
@@ -24,11 +26,7 @@ export default function Privacy() {
         </li>
         <li>Campaigns you follow, campaigns you report, fundraising pages you create, giving points and streaks, and the date you started your zakat year.</li>
         <li>Your invite code and who invited you, to credit ambassadors.</li>
-        <li>
-          If you apply for a verified-need fund: the case type, amount, your description, and photos of your paper documents. The photos are kept in private storage, shown
-          only to you and the review team through short-lived links, and erased when you delete your data (once the request is closed). We also store whether your
-          wallet exists on the Pi blockchain, to confirm you are a verified Pioneer.
-        </li>
+        <NeedPrivacyItem />
         <li>On your device only: your language, last gift amount and sign-in consent. We do not use cookies or advertising trackers. We count visits with cookie-free Vercel Web Analytics.</li>
       </ul>
       <p>We do not receive your wallet passphrase, email address, phone number, contacts or location.</p>

@@ -1,9 +1,11 @@
 "use client";
 
 import { useLang } from "@/lib/client/i18n";
+import { useNeedEnabled } from "@/lib/client/need-types";
 
 export default function Terms() {
   const { lang } = useLang();
+  const needOn = useNeedEnabled(); // the need-fund rules are shown only where the feature is live
   if (lang === "ar")
     return (
       <article className="card mx-auto max-w-3xl space-y-4 p-6 text-sm leading-loose">
@@ -34,6 +36,8 @@ export default function Terms() {
         <p>النقاط مالهاش قيمة نقدية. لو اتطلق توكن سند، ممكن النقاط تتحوّل له بقواعد هتتعلن ساعتها.</p>
         <h2 className="font-bold">7. المسؤولية</h2>
         <p>سند تطبيق مجتمعي ومش من تطوير فريق Pi الأساسي. بنراجع كل حملة وبننشر إثباتات الصرف، لكن مش بنضمن نتيجة أي حملة.</p>
+        {needOn && (
+          <>
         <h2 className="font-bold">8. صناديق الاحتياج الموثّقة</h2>
         <p>
           رائد عنده حالة علاج أو فاتورة مستشفى أو مصاريف دراسة يقدر يقدّم طلب في سند. شروط الطلب:
@@ -53,6 +57,8 @@ export default function Terms() {
           </li>
           <li>طلب واحد شغال لكل رائد في نفس الوقت. سند ممكن ترفض أي طلب أو توقفه لو في شك في المستندات.</li>
         </ul>
+          </>
+        )}
         <p className="text-muted">Pi و Pi Network وشعار Pi علامات تجارية لـ Pi Community Company.</p>
       </article>
     );
@@ -83,6 +89,8 @@ export default function Terms() {
       <p>Points have no cash value. If a Sanad token is launched, points may be converted under rules published at that time.</p>
       <h2 className="font-bold">7. Liability</h2>
       <p>Sanad is a community app, not developed by the Pi Core Team. We vet every campaign and publish proof of spending, but cannot guarantee the outcome of any campaign.</p>
+      {needOn && (
+        <>
       <h2 className="font-bold">8. Verified-need funds</h2>
       <p>A Pioneer with a treatment, hospital bill or study-fee need can apply on Sanad. The rules:</p>
       <ul className="list-disc space-y-1 ps-5">
@@ -102,6 +110,8 @@ export default function Terms() {
         </li>
         <li>One active request per Pioneer at a time. Sanad may reject or stop any request it doubts.</li>
       </ul>
+        </>
+      )}
       <p className="text-muted">Pi, Pi Network and the Pi logo are trademarks of the Pi Community Company.</p>
     </article>
   );

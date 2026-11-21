@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { db, must } from "@/lib/server/db";
 import { clientIp, handler, HttpError, isAdmin, json, rateLimit, readJson } from "@/lib/server/http";
+import { needEnabled } from "@/lib/server/need";
 import { PiApiError, verifyAccessToken } from "@/lib/server/pi";
 import { createSession } from "@/lib/server/session";
 import { isWalletVerified, verifyWallet } from "@/lib/server/verify";
@@ -62,7 +63,7 @@ export const POST = handler(async (request) => {
 
   // Verified Pioneer: the wallet Pi gave us exists on the blockchain. Skipped when already verified.
   let verified = await isWalletVerified(me.uid);
-  if (!verified && fromPi && WALLET_RE.test(fromPi)) verified = (await verifyWallet(me.uid, fromPi)) === "verified";
+  if (needEnabled() && !verified && fromPi && WALLET_RE.test(fromPi)) verified = (await verifyWallet(me.uid, fromPi)) === "verified";
 
   return json({
     token: createSession(me.uid, username),
