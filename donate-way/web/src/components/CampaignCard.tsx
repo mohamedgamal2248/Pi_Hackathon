@@ -72,7 +72,13 @@ export function CampaignCard({ c, priority = false }: { c: Campaign; priority?: 
   return (
     <Link href={`/campaigns/${c.id}`} className="card group block overflow-hidden transition duration-300 hover:-translate-y-1 hover:border-brand/40 active:scale-[0.99]">
       <div className="relative">
-        <Cover src={c.cover_url} sizes="(min-width:1024px) 33vw, (min-width:640px) 50vw, 100vw" priority={priority} className="aspect-[16/10] transition duration-500 group-hover:scale-[1.02]" />
+        {c.kind === "need" && !c.cover_url ? (
+          <div className="grid h-28 place-items-center bg-brand-soft text-brand" aria-hidden>
+            <Icon name="shield" size={44} />
+          </div>
+        ) : (
+          <Cover src={c.cover_url} sizes="(min-width:1024px) 33vw, (min-width:640px) 50vw, 100vw" priority={priority} className="aspect-[16/10] transition duration-500 group-hover:scale-[1.02]" />
+        )}
         <div className="absolute start-3 top-3 flex gap-1.5">
           {c.kind === "need" && <NeedBadge />}
           <StatusBadge c={c} />

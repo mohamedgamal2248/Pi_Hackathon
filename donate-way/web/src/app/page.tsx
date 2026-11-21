@@ -89,7 +89,7 @@ export default function HomePage() {
     <div className="space-y-8 lg:space-y-10">
       {/* Hero + quick donate */}
       <div className="stagger grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-        {needOn && <NeedHero total={s?.total} donors={s?.donors} funds={s?.campaigns} />}
+        {needOn && <NeedHero total={s?.total} donors={s?.donors} />}
         {!needOn && (
         <section className="card relative overflow-hidden p-5 sm:p-7">
           <div className="pointer-events-none absolute -end-20 -top-20 h-60 w-60 rounded-full bg-brand/10 blur-3xl" aria-hidden />

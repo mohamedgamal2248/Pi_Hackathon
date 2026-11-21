@@ -12,7 +12,7 @@ import { usePi } from "@/lib/client/pi";
 import { pi, type Campaign } from "@/lib/client/types";
 
 // The home page's main feature: apply for a verified donation fund.
-export function NeedHero({ total, donors, funds }: { total?: number; donors?: number; funds?: number }) {
+export function NeedHero({ total, donors }: { total?: number; donors?: number }) {
   const { lang } = useLang();
   const steps = ["hero_need_1", "hero_need_2", "hero_need_3", "hero_need_4"] as const;
   return (
@@ -49,11 +49,6 @@ export function NeedHero({ total, donors, funds }: { total?: number; donors?: nu
           <span>
             <b className="num text-ink">{donors ?? 0}</b> {lang === "ar" ? "متبرع" : "donors"}
           </span>
-          {funds !== undefined && (
-            <span>
-              <b className="num text-ink">{funds}</b> {nt(lang, "res_funds")}
-            </span>
-          )}
         </div>
       )}
     </section>
