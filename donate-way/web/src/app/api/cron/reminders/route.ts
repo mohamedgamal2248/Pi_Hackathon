@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { db } from "@/lib/server/db";
 import { env } from "@/lib/server/env";
 import { handler, HttpError, json } from "@/lib/server/http";
+import { syncNeedStatuses } from "@/lib/server/need";
 import { notify, type PiNotification } from "@/lib/server/pi";
 import { currentSeason, hijri } from "@/lib/server/season";
 import { dailyStreak, weekIndex } from "@/lib/server/streak";
@@ -15,6 +16,7 @@ export const GET = handler(async (request) => {
   const given = Buffer.from(request.headers.get("authorization") ?? "");
   const want = Buffer.from(`Bearer ${secret}`);
   if (!secret || given.length !== want.length || !timingSafeEqual(given, want)) throw new HttpError(401, "unauthorized");
+  await syncNeedStatuses(); // close verified-need funds whose fundraising window ended
   const out: PiNotification[] = [];
   const today = new Date().toISOString().slice(0, 10);
 

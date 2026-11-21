@@ -6,13 +6,14 @@ import { Icon } from "@/components/Icon";
 import { Money } from "@/components/Money";
 import { Sheet } from "@/components/Sheet";
 import { useLang } from "@/lib/client/i18n";
+import { nt } from "@/lib/client/need-i18n";
 import { Confetti } from "@/lib/client/motion";
 import { ApiError, usePi, type DonationItem } from "@/lib/client/pi";
 import { ShareCard } from "@/components/ShareCard";
 import { fmt, pi as piFmt, shareUrl, sharePi, type ImpactUnit } from "@/lib/client/types";
 
 export type DonateTarget =
-  | { kind: "campaign"; id: string; title: string; impactUnits?: ImpactUnit[] }
+  | { kind: "campaign"; id: string; title: string; impactUnits?: ImpactUnit[]; needFund?: { stage1Pct: number } }
   | { kind: "fund"; fund: "general" | "zakat"; title: string };
 
 
@@ -53,11 +54,13 @@ export function DonateSheet({
   const [giftName, setGiftName] = useState(presetMemorial?.name ?? "");
   const [giftNote, setGiftNote] = useState(presetMemorial?.note ?? "");
   const [busy, setBusy] = useState(false);
+  const [ack, setAck] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<{ amount: number; txid: string; donationId: string } | null>(null);
 
   const total = Number(amount);
-  const valid = Number.isFinite(total) && total >= 0.01 && (!giftOn || giftName.trim().length > 0);
+  const needFund = target.kind === "campaign" ? target.needFund : undefined;
+  const valid = Number.isFinite(total) && total >= 0.01 && (!giftOn || giftName.trim().length > 0) && (!needFund || ack);
   const title = target.title;
   const noSdk = ready && typeof window !== "undefined" && !window.Pi;
 
@@ -207,6 +210,17 @@ export function DonateSheet({
             </div>
           )}
         </div>
+
+        {needFund && (
+          <div className="space-y-2 rounded-2xl border border-gold/40 bg-gold-soft p-3 text-sm text-gold">
+            <b>{nt(lang, "fund_rule_title")}</b>
+            <p>{nt(lang, "fund_rule", { pct: needFund.stage1Pct })}</p>
+            <label className="flex min-h-11 items-center gap-3">
+              <input type="checkbox" className="h-5 w-5 shrink-0 accent-[var(--brand)]" checked={ack} onChange={(e) => setAck(e.target.checked)} />
+              {nt(lang, "fund_rule_check")}
+            </label>
+          </div>
+        )}
 
         {error && <p className="text-sm text-danger">{error}</p>}
         {noSdk && <p className="text-sm text-muted">{t("use_pi_browser")}</p>}

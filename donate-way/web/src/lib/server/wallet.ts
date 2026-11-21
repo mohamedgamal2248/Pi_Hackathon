@@ -28,3 +28,15 @@ export async function walletBalances(address: string): Promise<{ exists: boolean
       })),
   };
 }
+
+// Does this account exist on the current network's blockchain? true / false, or null when Horizon can't answer.
+export async function accountExists(address: string): Promise<boolean | null> {
+  if (!WALLET_RE.test(address)) return false;
+  try {
+    const res = await fetch(`${horizon()}/accounts/${address}`, { cache: "no-store", signal: AbortSignal.timeout(4000) });
+    if (res.status === 404) return false;
+    return res.ok ? true : null;
+  } catch {
+    return null;
+  }
+}

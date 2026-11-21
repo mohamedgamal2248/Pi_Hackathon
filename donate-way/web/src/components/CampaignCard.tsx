@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { Money } from "@/components/Money";
 import { useLang, type TKey } from "@/lib/client/i18n";
+import { nt } from "@/lib/client/need-i18n";
 import { daysLeft, pi, type Campaign } from "@/lib/client/types";
 
 // Fills from 0 when it scrolls into view.
@@ -55,6 +56,15 @@ export function Cover({ src, sizes, priority = false, className = "" }: { src: s
   );
 }
 
+export function NeedBadge({ className = "" }: { className?: string }) {
+  const { lang } = useLang();
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full bg-brand px-2.5 py-1 text-xs font-bold text-brand-ink ${className}`}>
+      <Icon name="shield" size={14} /> {nt(lang, "badge")}
+    </span>
+  );
+}
+
 export function CampaignCard({ c, priority = false }: { c: Campaign; priority?: boolean }) {
   const { t } = useLang();
   const left = daysLeft(c.deadline);
@@ -64,6 +74,7 @@ export function CampaignCard({ c, priority = false }: { c: Campaign; priority?: 
       <div className="relative">
         <Cover src={c.cover_url} sizes="(min-width:1024px) 33vw, (min-width:640px) 50vw, 100vw" priority={priority} className="aspect-[16/10] transition duration-500 group-hover:scale-[1.02]" />
         <div className="absolute start-3 top-3 flex gap-1.5">
+          {c.kind === "need" && <NeedBadge />}
           <StatusBadge c={c} />
           {c.zakat_eligible && <span className="rounded-full bg-bg/80 px-2.5 py-1 text-xs font-bold text-brand backdrop-blur">{t("zakat_ok")}</span>}
         </div>
@@ -85,7 +96,7 @@ export function CampaignCard({ c, priority = false }: { c: Campaign; priority?: 
             <Money value={c.raised} className="text-brand" showUsd={false} /> <span className="text-muted">{t("of_goal")} {pi(c.goal)}</span>
           </span>
           <span className="shrink-0 text-xs text-muted">
-            {c.status === "active" ? t("remaining", { amount: pi(remaining) }) : `${c.donors} ${t("donors")}`}
+            {c.kind === "need" ? `${Math.round(Math.min(100, c.goal > 0 ? (c.raised / c.goal) * 100 : 0))}% · ${c.donors} ${t("donors")}` : c.status === "active" ? t("remaining", { amount: pi(remaining) }) : `${c.donors} ${t("donors")}`}
           </span>
         </div>
       </div>

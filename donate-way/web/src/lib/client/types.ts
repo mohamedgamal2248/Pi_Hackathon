@@ -20,6 +20,7 @@ export type Campaign = {
   status: string;
   created_at: string;
   impact_units: ImpactUnit[];
+  kind?: "charity" | "need";
 };
 
 export type Update = {
@@ -32,7 +33,21 @@ export type Update = {
   created_at: string;
 };
 
+export type NeedFund = {
+  status: string;
+  caseType: "treatment" | "hospital_bill" | "study_fees";
+  applicant: string;
+  endsAt: string | null;
+  isOwner: boolean;
+  payouts: { stage: number; amount: number; txid: string | null; completed_at: string | null }[];
+  stage1Pct: number;
+  proofVisible: boolean;
+  proofReady: boolean;
+  proof: { id: string; url: string }[];
+};
+
 export type CampaignDetail = Campaign & {
+  need?: NeedFund | null;
   match: { sponsor: string; multiplier: number; cap: number; matched: number; remaining: number; ends_at: string } | null;
   following: boolean;
   updates: Update[];

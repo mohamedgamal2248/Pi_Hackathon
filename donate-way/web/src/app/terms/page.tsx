@@ -34,6 +34,25 @@ export default function Terms() {
         <p>النقاط مالهاش قيمة نقدية. لو اتطلق توكن سند، ممكن النقاط تتحوّل له بقواعد هتتعلن ساعتها.</p>
         <h2 className="font-bold">7. المسؤولية</h2>
         <p>سند تطبيق مجتمعي ومش من تطوير فريق Pi الأساسي. بنراجع كل حملة وبننشر إثباتات الصرف، لكن مش بنضمن نتيجة أي حملة.</p>
+        <h2 className="font-bold">8. صناديق الاحتياج الموثّقة</h2>
+        <p>
+          رائد عنده حالة علاج أو فاتورة مستشفى أو مصاريف دراسة يقدر يقدّم طلب في سند. شروط الطلب:
+        </p>
+        <ul className="list-disc space-y-1 ps-5">
+          <li>
+            <b>رسوم تأكيد المحفظة والجدّية: 1 Pi مرة واحدة لكل طلب، وغير قابلة للاسترداد</b> حتى لو الطلب اترفض أو اتطلب مستندات ومكمّلتش. الرسوم دي بتأكد إن حسابك
+            مسجّل بـ Pi ومحفظتك شغالة وإن الطلب جاد، ومش ضمان الموافقة. الموافقة بتعتمد على المستندات الورقية بس، ولو طلبنا مستندات إضافية مش بتدفع الرسوم تاني.
+          </li>
+          <li>المستندات بتتشاف من فريق المراجعة بس ومش بتظهر للناس. بنرفض أي مستند اتستخدم قبل كده في طلب تاني.</li>
+          <li>
+            بعد الموافقة بيتفتح صندوق تبرع بمدة اختارها صاحب الحالة (يوم أو أسبوع أو شهر). التبرعات بتتجمع عند سند ومفيهاش خصم، <b>ومفيش استرجاع للمتبرعين</b>.
+          </li>
+          <li>
+            بعد انتهاء المدة بيتحوّل لصاحب الحالة <b>70% من اللي اتجمع</b>، والـ 30% الباقية بتتحوّل بعد ما يرفع إثبات إن الفاتورة أو المصاريف اتسددت، ونعرض الإثبات
+            للمتبرعين. التحويل بيكون دايمًا للحساب اللي دفع رسوم التأكيد.
+          </li>
+          <li>طلب واحد شغال لكل رائد في نفس الوقت. سند ممكن ترفض أي طلب أو توقفه لو في شك في المستندات.</li>
+        </ul>
         <p className="text-muted">Pi و Pi Network وشعار Pi علامات تجارية لـ Pi Community Company.</p>
       </article>
     );
@@ -64,6 +83,25 @@ export default function Terms() {
       <p>Points have no cash value. If a Sanad token is launched, points may be converted under rules published at that time.</p>
       <h2 className="font-bold">7. Liability</h2>
       <p>Sanad is a community app, not developed by the Pi Core Team. We vet every campaign and publish proof of spending, but cannot guarantee the outcome of any campaign.</p>
+      <h2 className="font-bold">8. Verified-need funds</h2>
+      <p>A Pioneer with a treatment, hospital bill or study-fee need can apply on Sanad. The rules:</p>
+      <ul className="list-disc space-y-1 ps-5">
+        <li>
+          <b>Wallet confirmation and seriousness fee: 1 Pi, once per request, non-refundable</b>, even if the request is rejected or you are asked for more documents and do not
+          continue. It confirms that your account is signed in with Pi, that your wallet works and that the request is serious. It does not guarantee approval: approval
+          depends only on the paper documents, and if we ask for more documents you do not pay again.
+        </li>
+        <li>Documents are seen only by the review team and are never shown publicly. A document already used on another request is rejected.</li>
+        <li>
+          After approval a fund opens for the window the applicant chose (one day, one week or one month). Donations are held by Sanad, carry no deduction, and{" "}
+          <b>are not refunded to donors</b>.
+        </li>
+        <li>
+          When the window ends, <b>70% of what was collected</b> is paid to the applicant. The remaining 30% is paid after the applicant uploads proof that the bill or
+          fees were paid, and that proof is shown to donors. Payouts always go to the account that paid the confirmation fee.
+        </li>
+        <li>One active request per Pioneer at a time. Sanad may reject or stop any request it doubts.</li>
+      </ul>
       <p className="text-muted">Pi, Pi Network and the Pi logo are trademarks of the Pi Community Company.</p>
     </article>
   );

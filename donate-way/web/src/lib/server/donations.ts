@@ -3,7 +3,7 @@ import { db, must } from "./db";
 import { HttpError } from "./http";
 import { approvePayment, cancelPayment, completePayment, getPayment, notify, type PiPayment } from "./pi";
 import { awardPoints } from "./points";
-import { split } from "./split";
+import { NEED_PLATFORM_FEE_RATE, PLATFORM_FEE_RATE, split } from "./split";
 
 export const MIN_DONATION = 0.01;
 export const MAX_DONATION = 100_000;
@@ -77,12 +77,14 @@ async function assertDonatable(meta: Meta) {
   const ids = [...new Set(meta.items.map((i) => i.campaignId).filter(Boolean))] as string[];
   if (!ids.length) return;
   const rows = must(
-    await db().from("dw_campaigns").select("id,status,deadline,zakat_eligible").in("id", ids)
-  ) as { id: string; status: string; deadline: string | null; zakat_eligible: boolean }[];
+    await db().from("dw_campaigns").select("id,status,deadline,zakat_eligible,kind").in("id", ids)
+  ) as { id: string; status: string; deadline: string | null; zakat_eligible: boolean; kind: string }[];
   for (const id of ids) {
     const c = rows.find((r) => r.id === id);
     if (!c) throw new HttpError(404, "campaign_not_found");
-    if (!["active", "funded"].includes(c.status)) throw new HttpError(409, "campaign_closed");
+    // A verified-need fund stops taking donations when its goal is reached or its window ends.
+    if (!(c.kind === "need" ? ["active"] : ["active", "funded"]).includes(c.status)) throw new HttpError(409, "campaign_closed");
+    if (c.kind === "need" && meta.zakat) throw new HttpError(400, "campaign_not_zakat_eligible");
     if (c.deadline && new Date(c.deadline) < new Date()) throw new HttpError(409, "campaign_ended");
     if (meta.zakat && !c.zakat_eligible) throw new HttpError(400, "campaign_not_zakat_eligible");
   }
@@ -100,8 +102,16 @@ async function recordDonation(payment: PiPayment, uid: string, meta: Meta) {
   ) as { id: string; status: string } | null;
   if (existing) return existing;
 
-  const total = split(payment.amount);
+  // Verified-need funds take no donation fee.
+  const ids = [...new Set(meta.items.map((i) => i.campaignId).filter(Boolean))] as string[];
+  const needIds = new Set<string>();
+  if (ids.length) {
+    const { data: kinds } = await db().from("dw_campaigns").select("id,kind").in("id", ids);
+    for (const k of kinds ?? []) if (k.kind === "need") needIds.add(k.id);
+  }
+  const rateOf = (it: Item) => (it.campaignId && needIds.has(it.campaignId) ? NEED_PLATFORM_FEE_RATE : PLATFORM_FEE_RATE);
   const single = meta.items.length === 1 ? meta.items[0] : null;
+  const total = split(payment.amount, single ? rateOf(single) : PLATFORM_FEE_RATE);
   const row = must(
     await db()
       .from("dw_donations")
@@ -128,7 +138,7 @@ async function recordDonation(payment: PiPayment, uid: string, meta: Meta) {
       .from("dw_donation_items")
       .insert(
         meta.items.map((it) => {
-          const s = split(it.amount);
+          const s = split(it.amount, rateOf(it));
           return { donation_id: row.id, campaign_id: it.campaignId, fund: it.fund, amount: s.amount, campaign_share: s.campaignShare, platform_fee: s.platformFee };
         })
       )

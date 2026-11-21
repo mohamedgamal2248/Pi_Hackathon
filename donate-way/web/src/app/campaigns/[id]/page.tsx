@@ -10,6 +10,7 @@ import { Icon } from "@/components/Icon";
 import { Money } from "@/components/Money";
 import { PhotoGrid } from "@/components/Lightbox";
 import { MonthlySadaqa } from "@/components/MonthlySadaqa";
+import { NeedFundPanel } from "@/components/NeedFundPanel";
 import { Portal } from "@/components/Portal";
 import { useLang, type TKey } from "@/lib/client/i18n";
 import { usePi } from "@/lib/client/pi";
@@ -73,7 +74,8 @@ function CampaignView() {
   if (!c) return <div className="card h-96 animate-pulse" />;
 
   const left = daysLeft(c.deadline);
-  const canDonate = ["active", "funded"].includes(c.status) && (left === null || left > 0);
+  // A verified-need fund stops taking donations when its goal is reached or its window ends.
+  const canDonate = (c.kind === "need" ? c.status === "active" : ["active", "funded"].includes(c.status)) && (left === null || left > 0);
   const video = youtubeEmbed(c.video_url);
   const date = (s: string) => new Date(s).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-GB", { day: "numeric", month: "short", year: "numeric" });
   const remaining = Math.max(0, c.goal - c.raised);
@@ -138,6 +140,7 @@ function CampaignView() {
       </aside>
 
       <div className="space-y-5 lg:col-start-1 lg:row-start-1">
+        {c.need && <NeedFundPanel need={c.need} />}
         {c.match && (
           <section className="card space-y-1 border-brand/50 p-4 text-sm">
             <b className="flex items-center gap-2 text-brand">
@@ -291,7 +294,7 @@ function CampaignView() {
         </Sheet>
       )}
 
-      {donateOpen && <DonateSheet target={{ kind: "campaign", id: c.id, title: c.title, impactUnits: c.impact_units }} onClose={() => setDonateOpen(false)} onDone={load} />}
+      {donateOpen && <DonateSheet target={{ kind: "campaign", id: c.id, title: c.title, impactUnits: c.impact_units, needFund: c.need ? { stage1Pct: c.need.stage1Pct } : undefined }} onClose={() => setDonateOpen(false)} onDone={load} />}
     </div>
   );
 }

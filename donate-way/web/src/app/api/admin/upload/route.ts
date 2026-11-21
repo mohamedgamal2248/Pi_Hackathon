@@ -2,17 +2,10 @@ import { randomUUID } from "node:crypto";
 import { db } from "@/lib/server/db";
 import { env } from "@/lib/server/env";
 import { handler, HttpError, json, rateLimit, requireAdmin } from "@/lib/server/http";
+import { sniffImage as sniff } from "@/lib/server/image";
 import { isTestnet } from "@/lib/server/network";
 
 const MAX_BYTES = 4 * 1024 * 1024;
-
-// Checks the file's first bytes, not just the declared type.
-function sniff(buf: Uint8Array): { ext: string; type: string } | null {
-  if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return { ext: "jpg", type: "image/jpeg" };
-  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) return { ext: "png", type: "image/png" };
-  if (String.fromCharCode(...buf.slice(0, 4)) === "RIFF" && String.fromCharCode(...buf.slice(8, 12)) === "WEBP") return { ext: "webp", type: "image/webp" };
-  return null;
-}
 
 // Admin-only image upload (campaign covers, proof-of-spend receipts) to the public "sanad" bucket.
 // The browser compresses the image to WebP first (lib/client/image.ts).

@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { useLang } from "./i18n";
 import type { PiPaymentDTO } from "./pi-types";
 
-export type SessionUser = { username: string; isAdmin: boolean; hasWallet: boolean; referralCode: string | null };
+export type SessionUser = { username: string; isAdmin: boolean; hasWallet: boolean; verified: boolean; referralCode: string | null };
 
 export type DonationItem = { campaignId: string | null; fund?: "general" | "zakat" | null; amount: number };
 export type DonateArgs = {
@@ -23,6 +23,7 @@ type Ctx = {
   signIn: () => Promise<SessionUser | null>;
   api: <T>(path: string, init?: RequestInit) => Promise<T>;
   donate: (args: DonateArgs) => Promise<{ txid: string; donationId: string }>;
+  payNeedFee: (requestId: string) => Promise<{ txid: string }>;
   refCode: string | null;
   linkWallet: (manual?: string) => Promise<boolean>;
   signOut: () => void;
@@ -204,6 +205,36 @@ export function PiProvider({ children }: { children: ReactNode }) {
     [api, signIn]
   );
 
+  // The 1 Pi application fee of a verified-need request. The server checks amount, payer and memo itself.
+  const payNeedFee = useCallback(
+    async (requestId: string) => {
+      if (!window.Pi) throw new Error("pi_sdk_missing");
+      if (!token.current || !sdkAuthenticated.current) await signIn();
+      if (!token.current) throw new Error("sign_in_required");
+      return new Promise<{ txid: string }>((resolve, reject) => {
+        window.Pi!.createPayment(
+          { amount: 1, memo: `need_fee:${requestId}`, metadata: { kind: "need_fee", requestId } },
+          {
+            onReadyForServerApproval: (paymentId) => {
+              api("/api/payments/approve", { method: "POST", body: JSON.stringify({ paymentId }) }).catch(reject);
+            },
+            onReadyForServerCompletion: (paymentId, txid) => {
+              api("/api/payments/complete", { method: "POST", body: JSON.stringify({ paymentId, txid }) })
+                .then(() => resolve({ txid }))
+                .catch(reject);
+            },
+            onCancel: (paymentId) => {
+              api("/api/payments/cancel", { method: "POST", body: JSON.stringify({ paymentId }) }).catch(() => undefined);
+              reject(new Error("cancelled"));
+            },
+            onError: (error) => reject(error),
+          }
+        );
+      });
+    },
+    [api, signIn]
+  );
+
   // Saves the user's wallet address (public key) for the zakat calculator. Read from the Pi SDK
   // (wallet_address permission, asked once at sign-in); a pasted public address is the fallback.
   const linkWallet = useCallback(
@@ -251,7 +282,7 @@ export function PiProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <PiContext.Provider value={{ ready, user, signingIn, signIn, api, donate, refCode, linkWallet, signOut }}>{children}</PiContext.Provider>
+    <PiContext.Provider value={{ ready, user, signingIn, signIn, api, donate, payNeedFee, refCode, linkWallet, signOut }}>{children}</PiContext.Provider>
   );
 }
 

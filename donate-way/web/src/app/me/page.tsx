@@ -7,6 +7,8 @@ import { Icon } from "@/components/Icon";
 import { Money } from "@/components/Money";
 import { MonthlySadaqa } from "@/components/MonthlySadaqa";
 import { useLang, type TKey } from "@/lib/client/i18n";
+import { nt } from "@/lib/client/need-i18n";
+import { useNeedEnabled } from "@/lib/client/need-types";
 import { useCountUp } from "@/lib/client/motion";
 import { usePi } from "@/lib/client/pi";
 import { pi, shareUrl, sharePi, type Campaign } from "@/lib/client/types";
@@ -56,6 +58,7 @@ export default function MePage() {
   const { t, lang } = useLang();
   const { api, user, signIn, ready, signOut } = usePi();
   const router = useRouter();
+  const needOn = useNeedEnabled();
   const [me, setMe] = useState<Me | null>(null);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [copied, setCopied] = useState(false);
@@ -229,6 +232,11 @@ export default function MePage() {
         <p className="text-sm text-muted">
           {t("zakat_paid")}: <b className="num text-ink">{pi(me.zakatPaid)}</b>
         </p>
+        {needOn && (
+          <Link href="/need/mine" className="btn btn-ghost w-full">
+            <Icon name="shield" size={18} /> {nt(lang, "mine_link")}
+          </Link>
+        )}
         <Link href="/zakat" className="btn btn-ghost w-full">
           {t("zakat_title")}
         </Link>

@@ -1,5 +1,6 @@
 import { pickTitle } from "@/lib/server/campaigns";
 import { db } from "@/lib/server/db";
+import { eraseApplicantData } from "@/lib/server/need";
 import { handler, isAdmin, json, requireSession } from "@/lib/server/http";
 import { pointsBalance } from "@/lib/server/points";
 import { dailyStreak, givingStreak } from "@/lib/server/streak";
@@ -66,6 +67,7 @@ export const GET = handler(async (request) => {
 // public Pi blockchain and part of campaign totals) but are no longer linked to a name, wallet or invite link.
 export const DELETE = handler(async (request) => {
   const session = requireSession(request);
+  await eraseApplicantData(session.uid); // refuses while a need request is still open
   await db().from("dw_follows").delete().eq("pi_uid", session.uid);
   await db().from("dw_recurring").delete().eq("pi_uid", session.uid);
   await db().from("dw_friend_pages").delete().eq("owner_uid", session.uid);

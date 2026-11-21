@@ -1,12 +1,13 @@
 import "server-only";
 import { db, must } from "./db";
 import { activeMatch } from "./matching";
+import { needFundInfo, syncNeedStatuses } from "./need";
 import { wantsEnglish } from "./network";
 
 export const CATEGORIES = ["health", "education", "food", "water", "emergency", "orphans", "mosque", "debts", "other"] as const;
 export const PUBLIC_STATUSES = ["active", "funded", "completed"];
 
-const LIST_COLS = "id,title,title_en,summary,summary_en,category,country,goal,cover_url,urgent,zakat_eligible,deadline,status,created_at,impact_units";
+const LIST_COLS = "id,title,title_en,summary,summary_en,category,country,goal,cover_url,urgent,zakat_eligible,deadline,status,created_at,impact_units,kind";
 
 type CampaignRow = {
   id: string;
@@ -29,6 +30,8 @@ type CampaignRow = {
   created_at: string;
   impact_units: { amount: number; label: string; label_en?: string }[];
   organizer_uid?: string;
+  kind?: string;
+  need_id?: string | null;
 };
 
 async function statsFor(ids: string[]) {
@@ -47,8 +50,9 @@ export const pick = (ar: string, en?: string | null) => (wantsEnglish() && en &&
 export const pickTitle = (c: { title: string; title_en?: string | null } | null | undefined) => (c ? pick(c.title, c.title_en) : null);
 
 function shape(c: CampaignRow, s?: { raised: number; donors: number; released: number }, raw = false) {
-  const { organizer_uid: _o, ...rest } = c;
+  const { organizer_uid: _o, need_id: _n, ...rest } = c;
   void _o;
+  void _n;
   if (!raw) {
     rest.title = pick(c.title, c.title_en);
     rest.summary = c.summary == null ? null : pick(c.summary, c.summary_en);
@@ -62,6 +66,7 @@ function shape(c: CampaignRow, s?: { raised: number; donors: number; released: n
 }
 
 export async function listCampaigns(opts: { category?: string; q?: string; sort?: string; statuses?: string[]; zakat?: boolean; ids?: string[] }) {
+  await syncNeedStatuses();
   let query = db()
     .from("dw_campaigns")
     .select(LIST_COLS)
@@ -93,7 +98,8 @@ export async function listCampaigns(opts: { category?: string; q?: string; sort?
   return list;
 }
 
-export async function getCampaign(id: string, viewerUid?: string, includeHidden = false) {
+export async function getCampaign(id: string, viewerUid?: string, includeHidden = false, viewerIsAdmin = includeHidden) {
+  await syncNeedStatuses();
   const c = must(await db().from("dw_campaigns").select("*").eq("id", id).maybeSingle()) as CampaignRow | null;
   if (!c) return null;
   if (!PUBLIC_STATUSES.includes(c.status) && !includeHidden) return null;
@@ -130,6 +136,7 @@ export async function getCampaign(id: string, viewerUid?: string, includeHidden 
     ...shape(c, stats.get(id), includeHidden),
     following: !!follow.data,
     match: await activeMatch(id),
+    need: c.kind === "need" ? await needFundInfo(id, viewerUid, viewerIsAdmin) : null,
     updates: (updates.data ?? []).map((u) => ({ ...u, amount_spent: u.amount_spent == null ? null : Number(u.amount_spent) })),
     recentDonors,
   };
