@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { DocExample } from "@/components/DocExample";
 import { Icon } from "@/components/Icon";
 import { NeedDocs } from "@/components/NeedDocs";
 import { useLang } from "@/lib/client/i18n";
@@ -194,6 +195,7 @@ export default function NewNeedPage() {
           <p className="flex items-center gap-2 text-xs text-muted">
             <Icon name="lock" size={16} /> {nt(lang, "proof_private")}
           </p>
+          <DocExample caseType={caseType} />
           <NeedDocs requestId={draftId} docs={draft?.docs ?? []} kind="proof" onChanged={load} />
           {docsCount === 0 && <p className="text-xs text-muted">{nt(lang, "proof_min")}</p>}
           <div className="flex gap-2">

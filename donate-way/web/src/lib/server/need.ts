@@ -1,12 +1,14 @@
 import "server-only";
 import { createHash, randomUUID } from "node:crypto";
+import sharp from "sharp";
+import { env } from "./env";
 import { sendToUser } from "./a2u";
 import { db, must } from "./db";
 import { HttpError } from "./http";
 import { sniffImage } from "./image";
 import { isTestnet } from "./network";
 import { approvePayment, cancelPayment, completePayment, getPayment, notify, type PiPayment } from "./pi";
-import { verifyWallet, walletGate } from "./verify";
+import { isWalletVerified as isWalletVerifiedUid, verifyWallet, walletGate } from "./verify";
 import { WALLET_RE } from "./wallet";
 
 // Verified-need funds. State machine (compare-and-set on every change, so a request can only move forward):
@@ -22,6 +24,9 @@ export type CaseType = (typeof CASE_TYPES)[number];
 export const WINDOWS = [1, 7, 30] as const;
 export const STAGE1_SHARE = 0.7;
 export const MAX_DOCS = 8;
+export const PROOF_DAYS = 14; // days the applicant has to prove the settlement after the first payout
+export const REQUIRED_CHECKS = ["identity", "amount", "date", "stamp"] as const;
+const LARGE_PAYOUT = () => Number(process.env.NEED_LARGE_PAYOUT) || 500; // payouts at or above this need the admin to type the applicant's name
 const MAX_BYTES = 4 * 1024 * 1024;
 const BUCKET = "sanad-private";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -60,6 +65,7 @@ type NeedRow = {
   submitted_at: string | null;
   approved_at: string | null;
   ends_at: string | null;
+  proof_due_at: string | null;
 };
 
 // Verified-need funds are always on in the Testnet staging app. On Mainnet they stay off until
@@ -72,11 +78,50 @@ function assertNeedEnabled() {
 const now = () => new Date().toISOString();
 const round7 = (n: number) => Math.round(n * 1e7) / 1e7;
 
-async function log(requestId: string, actor: string, action: string, note?: string | null) {
+export async function log(requestId: string, actor: string, action: string, note?: string | null) {
   await db().from("dw_need_actions").insert({ request_id: requestId, actor_uid: actor, action, note: note ?? null });
 }
 
-async function usernames(uids: (string | null | undefined)[]): Promise<Map<string, string>> {
+// Everyone who can review: the configured admin accounts plus users flagged is_admin.
+export async function adminUids(): Promise<string[]> {
+  const configured = isTestnet() ? (process.env.ADMIN_PI_UIDS_TESTNET ?? "").split(",").map((x) => x.trim()).filter(Boolean) : env.adminUids();
+  const ids = new Set(configured);
+  const { data } = await db().from("dw_users").select("pi_uid").eq("is_admin", true);
+  for (const u of data ?? []) ids.add(u.pi_uid as string);
+  return [...ids];
+}
+export async function notifyAdmins(title: string, body: string) {
+  const uids = await adminUids();
+  if (uids.length) await notify(uids.map((user_uid) => ({ user_uid, title, body, subroute: "/admin" })));
+}
+
+// Perceptual hash (difference hash, 64 bits): the same paper photographed again lands within a few bits.
+async function dhash(bytes: Uint8Array): Promise<string | null> {
+  try {
+    const { data } = await sharp(bytes).rotate().greyscale().resize(9, 8, { fit: "fill" }).raw().toBuffer({ resolveWithObject: true });
+    let bits = "";
+    for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) bits += data[y * 9 + x] > data[y * 9 + x + 1] ? "1" : "0";
+    let hex = "";
+    for (let i = 0; i < 64; i += 4) hex += parseInt(bits.slice(i, i + 4), 2).toString(16);
+    return hex;
+  } catch {
+    return null;
+  }
+}
+function hamming(a: string, b: string): number {
+  // 4 bits per hex digit; count differing bits without BigInt literals (older TS target).
+  let n = 0;
+  for (let i = 0; i < Math.min(a.length, b.length); i++) {
+    let x = parseInt(a[i], 16) ^ parseInt(b[i], 16);
+    while (x) {
+      n += x & 1;
+      x >>= 1;
+    }
+  }
+  return n;
+}
+
+export async function usernames(uids: (string | null | undefined)[]): Promise<Map<string, string>> {
   const ids = [...new Set(uids.filter((u): u is string => !!u))];
   if (!ids.length) return new Map();
   const { data } = await db().from("dw_users").select("pi_uid,username").in("pi_uid", ids);
@@ -91,7 +136,7 @@ async function load(id: string): Promise<NeedRow> {
   return { ...row, amount: Number(row.amount), raised_final: row.raised_final == null ? null : Number(row.raised_final) };
 }
 
-async function loadOwn(id: string, uid: string): Promise<NeedRow> {
+export async function loadOwn(id: string, uid: string): Promise<NeedRow> {
   const row = await load(id);
   if (row.applicant_uid !== uid) throw new HttpError(403, "not_your_request");
   return row;
@@ -143,8 +188,20 @@ function checkAmount(type: CaseType, amount: number) {
   if (amount > maxAmount(type)) throw new HttpError(400, "amount_above_max");
 }
 
+// Blocked accounts/wallets and applicants rejected twice in the last 30 days cannot open a new request.
+async function assertAllowedApplicant(uid: string) {
+  const { data: u } = await db().from("dw_users").select("wallet_address").eq("pi_uid", uid).maybeSingle();
+  const byUid = await db().from("dw_need_blocklist").select("id").eq("kind", "uid").eq("value", uid).limit(1);
+  const byWallet = u?.wallet_address ? await db().from("dw_need_blocklist").select("id").eq("kind", "wallet").eq("value", u.wallet_address).limit(1) : { data: [] };
+  if (byUid.data?.length || byWallet.data?.length) throw new HttpError(403, "applicant_blocked");
+  const since = new Date(Date.now() - 30 * 86_400_000).toISOString();
+  const { count } = await db().from("dw_need_requests").select("id", { count: "exact", head: true }).eq("applicant_uid", uid).eq("status", "rejected").gte("updated_at", since);
+  if ((count ?? 0) >= 2) throw new HttpError(403, "too_many_rejections");
+}
+
 export async function createDraft(uid: string, body: DraftInput) {
   assertNeedEnabled();
+  await assertAllowedApplicant(uid);
   if ((await walletGate(uid)) !== "ok") throw new HttpError(403, "wallet_not_verified");
   const input = parseInput(body, false);
   checkAmount(input.case_type!, input.amount!);
@@ -209,10 +266,18 @@ export async function addDocument(id: string, uid: string, bytes: Uint8Array) {
     throw new HttpError(409, "document_duplicate");
   }
 
+  // Near-duplicates (the same paper photographed again) are accepted but flagged for the admin.
+  const phash = await dhash(bytes);
+  if (phash) {
+    const { data: others } = await db().from("dw_need_documents").select("request_id,phash").not("phash", "is", null).neq("request_id", id).limit(5000);
+    const near = (others ?? []).map((o) => ({ request: o.request_id as string, d: hamming(phash, o.phash as string) })).sort((a, b) => a.d - b.d)[0];
+    if (near && near.d <= 10) await log(id, uid, "near_duplicate", `looks like a document of request ${near.request} (distance ${near.d})`);
+  }
+
   const path = `${isTestnet() ? "staging/" : ""}need/${id}/${randomUUID()}.${img.ext}`;
   const up = await db().storage.from(BUCKET).upload(path, bytes, { contentType: img.type, upsert: false });
   if (up.error) throw new Error(up.error.message);
-  must(await db().from("dw_need_documents").insert({ request_id: id, kind, path, sha256, mime: img.type, size: bytes.length, uploaded_by: uid }).select("id").single());
+  must(await db().from("dw_need_documents").insert({ request_id: id, kind, path, sha256, phash, mime: img.type, size: bytes.length, uploaded_by: uid }).select("id").single());
   await log(id, uid, `document_${kind}`);
   return { ok: true, kind };
 }
@@ -292,6 +357,7 @@ export async function completeFee(paymentId: string, txid: string, uid: string) 
   }
   await log(request.id, uid, "fee_paid", `txid ${txid}`);
   await notify([{ user_uid: uid, title: "استلمنا طلبك", body: "دفعت رسوم التأكيد وطلبك دخل المراجعة. هنبلغك بالقرار.", subroute: "/need/mine" }]);
+  await notifyAdmins("طلب احتياج جديد", "وصل طلب جديد للمراجعة.");
   return { ok: true, requestId: request.id };
 }
 
@@ -327,6 +393,7 @@ export async function resubmit(id: string, uid: string) {
   if (!count) throw new HttpError(409, "extra_proof_required");
   await move(id, ["needs_more_proof"], "pending_review"); // the 1 Pi fee is NOT charged again
   await log(id, uid, "resubmitted");
+  await notifyAdmins("مستندات إضافية", "صاحب طلب أرسل المستندات اللي طلبتها.");
   return { ok: true };
 }
 
@@ -337,11 +404,12 @@ export async function submitSettlementProof(id: string, uid: string) {
   if (!count) throw new HttpError(409, "settlement_proof_required");
   await move(id, ["stage1_paid"], "proof_submitted");
   await log(id, uid, "settlement_submitted");
+  await notifyAdmins("إثبات سداد", "وصل إثبات سداد للمراجعة.");
   return { ok: true };
 }
 
 type Payout = { stage: number; amount: number; txid: string | null; status: string; completed_at: string | null };
-async function payoutsOf(id: string): Promise<Payout[]> {
+export async function payoutsOf(id: string): Promise<Payout[]> {
   const { data } = await db().from("dw_need_payouts").select("stage,amount,txid,status,completed_at").eq("request_id", id).order("stage");
   return (data ?? []).map((p) => ({ ...(p as Payout), amount: Number(p.amount) }));
 }
@@ -375,6 +443,26 @@ export async function myRequests(uid: string) {
 
 // ------------------------------------------------------------------ admin
 
+const words = (t: string) => new Set(t.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter((w) => w.length >= 3));
+function similar(a: string, b: string) {
+  const x = words(a);
+  const y = words(b);
+  if (x.size < 5 || y.size < 5) return 0;
+  let inter = 0;
+  x.forEach((w) => y.has(w) && inter++);
+  return inter / (x.size + y.size - inter);
+}
+
+// What the admin must see before paying: stage, amounts and exactly who receives them.
+async function payoutPreview(r: NeedRow, username: string, wallet: string | null) {
+  if (!["payout_due", "proof_submitted"].includes(r.status) || !r.campaign_id) return null;
+  const total = await shareTotal(r.campaign_id);
+  if (r.status === "payout_due") return { stage: 1, total, amount: round7(total * STAGE1_SHARE), username, wallet, large: round7(total * STAGE1_SHARE) >= LARGE_PAYOUT() };
+  const first = (await db().from("dw_need_payouts").select("amount").eq("request_id", r.id).eq("stage", 1).maybeSingle()).data;
+  const amount = round7(total - Number(first?.amount ?? 0));
+  return { stage: 2, total, amount, username, wallet, large: amount >= LARGE_PAYOUT() };
+}
+
 export async function adminQueue() {
   if (!needEnabled()) return [];
   await syncNeedStatuses();
@@ -382,12 +470,25 @@ export async function adminQueue() {
     await db().from("dw_need_requests").select("*").in("status", ["pending_review", "needs_more_proof", "payout_due", "stage1_paid", "proof_submitted"]).order("submitted_at", { ascending: true })
   ) ?? []) as NeedRow[];
   const names = await usernames(rows.map((r) => r.applicant_uid));
+  const { data: allReqs } = await db().from("dw_need_requests").select("id,applicant_uid,description,status").order("created_at", { ascending: false }).limit(300);
   const out = [];
   for (const r of rows) {
-    const [{ data: user }, { data: acts }] = await Promise.all([
-      db().from("dw_users").select("wallet_verified_at,wallet_verified_via").eq("pi_uid", r.applicant_uid).maybeSingle(),
+    const [{ data: user }, { data: acts }, { data: vouchRows }] = await Promise.all([
+      db().from("dw_users").select("wallet_address,wallet_verified_at,wallet_verified_via").eq("pi_uid", r.applicant_uid).maybeSingle(),
       db().from("dw_need_actions").select("action,note,actor_uid,created_at").eq("request_id", r.id).order("created_at"),
+      db().from("dw_need_vouches").select("voucher_uid").eq("request_id", r.id),
     ]);
+    const vouchers = await usernames((vouchRows ?? []).map((v) => v.voucher_uid as string));
+    // Warning signals: shared wallet, similar text in other requests, earlier requests of the same person.
+    let sharedWallet = 0;
+    if (user?.wallet_address) {
+      const { count } = await db().from("dw_users").select("pi_uid", { count: "exact", head: true }).eq("wallet_address", user.wallet_address).neq("pi_uid", r.applicant_uid);
+      sharedWallet = count ?? 0;
+    }
+    const others = (allReqs ?? []).filter((o) => o.id !== r.id);
+    const similarTexts = others.filter((o) => similar(r.description, o.description as string) >= 0.7).length;
+    const mine = others.filter((o) => o.applicant_uid === r.applicant_uid);
+    const waitingSince = r.status === "pending_review" ? r.submitted_at : r.updated_at;
     out.push({
       id: r.id,
       applicant: names.get(r.applicant_uid) ?? "?",
@@ -407,12 +508,26 @@ export async function adminQueue() {
       payouts: await payoutsOf(r.id),
       actions: acts ?? [],
       flagged: (acts ?? []).some((a) => a.action === "duplicate_blocked"),
+      signals: {
+        nearDuplicate: (acts ?? []).filter((a) => a.action === "near_duplicate").map((a) => a.note as string),
+        sharedWallet,
+        similarTexts,
+        earlierRequests: mine.length,
+        earlierRejected: mine.filter((o) => o.status === "rejected").length,
+      },
+      vouches: [...vouchers.values()],
+      waitingSince,
+      waitingDays: waitingSince ? Math.floor((Date.now() - new Date(waitingSince).getTime()) / 86_400_000) : 0,
+      proofDueAt: r.proof_due_at,
+      overdue: r.status === "stage1_paid" && !!r.proof_due_at && new Date(r.proof_due_at) < new Date(),
+      preview: await payoutPreview(r, names.get(r.applicant_uid) ?? "?", user?.wallet_address ?? null),
+      requiredChecks: REQUIRED_CHECKS,
     });
   }
   return out;
 }
 
-export async function decide(id: string, adminUid: string, decision: unknown, noteRaw: unknown) {
+export async function decide(id: string, adminUid: string, decision: unknown, noteRaw: unknown, extra: { checklist?: unknown; issuerVerified?: unknown; issuerNote?: unknown } = {}) {
   const note = typeof noteRaw === "string" ? noteRaw.trim().slice(0, 500) : "";
   const row = await load(id);
 
@@ -431,6 +546,10 @@ export async function decide(id: string, adminUid: string, decision: unknown, no
   }
 
   if (decision === "approve") {
+    // The admin must tick every required check; the ticks are stored in the audit log.
+    const list = (extra.checklist ?? {}) as Record<string, unknown>;
+    if (!REQUIRED_CHECKS.every((k) => list[k] === true)) throw new HttpError(400, "checklist_incomplete");
+    const issuer = extra.issuerVerified === true ? `issuer verified${typeof extra.issuerNote === "string" && extra.issuerNote.trim() ? `: ${extra.issuerNote.trim().slice(0, 200)}` : ""}` : "issuer not verified";
     const moved = await move(id, ["pending_review"], "fundraising", { admin_note: note || null, approved_at: now(), ends_at: new Date(Date.now() + row.window_days * 86_400_000).toISOString() });
     try {
       const { data: u } = await db().from("dw_users").select("username").eq("pi_uid", row.applicant_uid).maybeSingle();
@@ -460,7 +579,7 @@ export async function decide(id: string, adminUid: string, decision: unknown, no
           .single()
       ) as { id: string };
       await db().from("dw_need_requests").update({ campaign_id: campaign.id }).eq("id", id);
-      await log(id, adminUid, "approved", note || null);
+      await log(id, adminUid, "approved", `checks ${REQUIRED_CHECKS.join("+")} ok; ${issuer}${note ? `; ${note}` : ""}`);
       await notify([{ user_uid: row.applicant_uid, title: "تمت الموافقة", body: "طلبك اتقبل وصندوق التبرع اتفتح.", subroute: `/campaigns/${campaign.id}` }]);
       return { ok: true, campaignId: campaign.id };
     } catch (err) {
@@ -508,7 +627,7 @@ export async function syncNeedStatuses() {
 }
 
 // Pays a stage to the applicant (A2U). Resumable: each Pi id is stored as soon as it exists.
-export async function payout(id: string, stage: 1 | 2, adminUid: string) {
+export async function payout(id: string, stage: 1 | 2, adminUid: string, confirmName?: unknown) {
   const row = await load(id);
   if (stage === 1 && row.status !== "payout_due") throw new HttpError(409, "wrong_state");
   if (stage === 2 && row.status !== "proof_submitted") throw new HttpError(409, "wrong_state");
@@ -534,6 +653,11 @@ export async function payout(id: string, stage: 1 | 2, adminUid: string) {
     rec = ins.data;
   }
   if (rec!.status === "completed") throw new HttpError(409, "already_paid");
+  // Large payouts: the admin must type the applicant's username as a second confirmation.
+  if (Number(rec!.amount) >= LARGE_PAYOUT()) {
+    const who = (await usernames([row.applicant_uid])).get(row.applicant_uid) ?? "";
+    if (typeof confirmName !== "string" || confirmName.trim().toLowerCase() !== who.toLowerCase()) throw new HttpError(409, "confirm_name_required");
+  }
 
   const result = await sendToUser(
     { uid: row.applicant_uid, amount: Number(rec!.amount), memo: `Sanad need fund ${id.slice(0, 8)} stage ${stage}`, metadata: { kind: "need_payout", requestId: id, stage } },
@@ -545,7 +669,7 @@ export async function payout(id: string, stage: 1 | 2, adminUid: string) {
   await db().from("dw_need_payouts").update({ status: "completed", completed_at: now(), a2u_payment_id: result.paymentId, txid: result.txid }).eq("id", rec!.id);
   await log(id, adminUid, `payout_stage_${stage}`, `${rec!.amount} π, txid ${result.txid}`);
   if (stage === 1) {
-    await move(id, ["payout_due"], "stage1_paid");
+    await move(id, ["payout_due"], "stage1_paid", { proof_due_at: new Date(Date.now() + PROOF_DAYS * 86_400_000).toISOString() });
     await notify([{ user_uid: row.applicant_uid, title: "وصلتك المرحلة الأولى", body: `اتحوّل لك ${rec!.amount} π. ارفع إثبات السداد علشان ياخد الباقي.`, subroute: "/need/mine" }]);
   } else {
     await move(id, ["proof_submitted"], "closed");
@@ -554,7 +678,7 @@ export async function payout(id: string, stage: 1 | 2, adminUid: string) {
   return { ok: true, txid: result.txid, amount: Number(rec!.amount) };
 }
 
-export async function reviewSettlement(id: string, adminUid: string, approve: boolean, noteRaw: unknown) {
+export async function reviewSettlement(id: string, adminUid: string, approve: boolean, noteRaw: unknown, confirmName?: unknown) {
   const note = typeof noteRaw === "string" ? noteRaw.trim().slice(0, 500) : "";
   const row = await load(id);
   if (row.status !== "proof_submitted") throw new HttpError(409, "wrong_state");
@@ -566,7 +690,34 @@ export async function reviewSettlement(id: string, adminUid: string, approve: bo
     return { ok: true };
   }
   await log(id, adminUid, "settlement_approved", note || null);
-  return payout(id, 2, adminUid);
+  return payout(id, 2, adminUid, confirmName);
+}
+
+// The applicant did not prove the settlement within PROOF_DAYS: the remaining share stays with Sanad's general fund
+// (the terms say so) and the case is closed.
+export async function closeOverdue(id: string, adminUid: string, noteRaw: unknown) {
+  const row = await load(id);
+  if (row.status !== "stage1_paid" || !row.proof_due_at || new Date(row.proof_due_at) > new Date()) throw new HttpError(409, "not_overdue");
+  const total = row.campaign_id ? await shareTotal(row.campaign_id) : 0;
+  const first = (await db().from("dw_need_payouts").select("amount").eq("request_id", id).eq("stage", 1).maybeSingle()).data;
+  const kept = round7(total - Number(first?.amount ?? 0));
+  const note = typeof noteRaw === "string" ? noteRaw.trim().slice(0, 300) : "";
+  await move(id, ["stage1_paid"], "closed", { admin_note: `لم يُرفع إثبات السداد في المهلة. ${kept} π بقيت في الصندوق العام.${note ? ` ${note}` : ""}` });
+  await log(id, adminUid, "proof_overdue_closed", `kept ${kept} π in the general fund${note ? `; ${note}` : ""}`);
+  await notify([{ user_uid: row.applicant_uid, title: "اتقفلت الحالة", body: "انتهت مهلة إثبات السداد، فاتقفلت الحالة.", subroute: "/need/mine" }]);
+  return { ok: true, kept };
+}
+
+// Blocks the applicant's account and wallet from opening new requests.
+export async function blockApplicant(id: string, adminUid: string, reasonRaw: unknown) {
+  const row = await load(id);
+  const reason = typeof reasonRaw === "string" ? reasonRaw.trim().slice(0, 300) : "";
+  if (!reason) throw new HttpError(400, "note_required");
+  const { data: u } = await db().from("dw_users").select("wallet_address").eq("pi_uid", row.applicant_uid).maybeSingle();
+  await db().from("dw_need_blocklist").upsert({ kind: "uid", value: row.applicant_uid, reason, created_by: adminUid }, { onConflict: "kind,value" });
+  if (u?.wallet_address) await db().from("dw_need_blocklist").upsert({ kind: "wallet", value: u.wallet_address, reason, created_by: adminUid }, { onConflict: "kind,value" });
+  await log(id, adminUid, "applicant_blocked", reason);
+  return { ok: true };
 }
 
 // ------------------------------------------------------------------ data deletion
@@ -574,6 +725,7 @@ export async function reviewSettlement(id: string, adminUid: string, approve: bo
 // "Delete my data": refused while a request still holds money or is under review; otherwise the private
 // documents are erased from storage and the request text is blanked. Payment records stay (they are on-chain).
 export async function eraseApplicantData(uid: string) {
+  await db().from("dw_need_vouches").delete().eq("voucher_uid", uid);
   const open = ["fee_pending", "pending_review", "needs_more_proof", "fundraising", "payout_due", "stage1_paid", "proof_submitted"];
   const { data: reqs } = await db().from("dw_need_requests").select("id,status").eq("applicant_uid", uid);
   if ((reqs ?? []).some((r) => open.includes(r.status))) throw new HttpError(409, "active_need_request");
@@ -607,9 +759,16 @@ export async function needFundInfo(campaignId: string, viewerUid: string | undef
     donor = !!data?.length;
   }
   const canSeeProof = isOwner || viewerIsAdmin || donor;
+  const { data: vrows } = await db().from("dw_need_vouches").select("voucher_uid").eq("request_id", row.id).order("created_at");
+  const vnames = await usernames((vrows ?? []).map((v) => v.voucher_uid as string));
+  let canVouch = false;
+  if (viewerUid && !isOwner && ["fundraising", "payout_due", "stage1_paid", "proof_submitted"].includes(row.status)) {
+    canVouch = isTestnet() || (await isWalletVerifiedUid(viewerUid));
+  }
   return {
     status: row.status,
     caseType: row.case_type,
+    vouches: { count: vrows?.length ?? 0, names: (vrows ?? []).slice(0, 5).map((v) => vnames.get(v.voucher_uid as string) ?? "?"), mine: !!viewerUid && (vrows ?? []).some((v) => v.voucher_uid === viewerUid), canVouch },
     applicant: names.get(row.applicant_uid) ?? "",
     endsAt: row.ends_at,
     isOwner,

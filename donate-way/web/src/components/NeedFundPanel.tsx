@@ -3,13 +3,32 @@
 import { DocViewer } from "@/components/DocViewer";
 import { Icon } from "@/components/Icon";
 import { NeedBadge } from "@/components/CampaignCard";
+import { useState } from "react";
 import { useLang } from "@/lib/client/i18n";
-import { nt, type NeedKey } from "@/lib/client/need-i18n";
+import { ApiError, usePi } from "@/lib/client/pi";
+import { nt, needError, type NeedKey } from "@/lib/client/need-i18n";
 import { explorerTx, pi, type NeedFund } from "@/lib/client/types";
 
 // Public part of a verified-need fund: who/what, where the money is in its life, payouts and (for donors) the proof.
-export function NeedFundPanel({ need }: { need: NeedFund }) {
-  const { lang } = useLang();
+export function NeedFundPanel({ need, campaignId, onChanged }: { need: NeedFund; campaignId: string; onChanged: () => void }) {
+  const { lang, t } = useLang();
+  const { api, user, signIn } = usePi();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function toggleVouch() {
+    if (!user && !(await signIn())) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api(`/api/campaigns/${campaignId}/vouch`, { method: need.vouches.mine ? "DELETE" : "POST" });
+      onChanged();
+    } catch (e) {
+      setError(e instanceof ApiError ? needError(lang, e.message, t("error_generic")) : t("error_generic"));
+    } finally {
+      setBusy(false);
+    }
+  }
   const date = need.endsAt ? new Date(need.endsAt).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-GB", { day: "numeric", month: "short", year: "numeric" }) : "";
   const stageKey = `fund_stage_${need.status}` as NeedKey;
   const stageText = need.status === "fundraising" ? nt(lang, "fund_stage_fundraising", { date }) : nt(lang, stageKey);
@@ -25,6 +44,27 @@ export function NeedFundPanel({ need }: { need: NeedFund }) {
         <Icon name="clock" size={18} className="mt-0.5 shrink-0 text-brand" /> {stageText}
       </p>
       {need.status === "fundraising" && <p className="text-xs text-muted">{nt(lang, "fund_rule", { pct: need.stage1Pct })}</p>}
+
+      <div className="space-y-1.5 rounded-2xl border border-line p-3 text-sm">
+        <p className="flex items-center gap-2 font-bold">
+          <Icon name="shield" size={18} className="text-brand" />
+          {need.vouches.count > 0 ? nt(lang, "vouch_count", { n: need.vouches.count }) : nt(lang, "vouch_none")}
+        </p>
+        {need.vouches.names.length > 0 && <p className="text-xs text-muted">{nt(lang, "vouch_names", { names: need.vouches.names.map((n) => `@${n}`).join("، ") })}</p>}
+        {need.vouches.canVouch && (
+          <>
+            <p className="text-xs text-muted">{nt(lang, "vouch_note")}</p>
+            <button className="btn btn-ghost w-full" disabled={busy} onClick={toggleVouch}>
+              {need.vouches.mine ? nt(lang, "vouch_undo") : nt(lang, "vouch_btn")}
+            </button>
+          </>
+        )}
+        {error && (
+          <p role="alert" className="text-xs text-danger">
+            {error}
+          </p>
+        )}
+      </div>
 
       {need.payouts.length > 0 && (
         <div className="space-y-1.5 text-sm">

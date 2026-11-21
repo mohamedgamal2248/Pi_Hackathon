@@ -11,6 +11,7 @@ export const GET = handler(async (request) => {
     q: url.searchParams.get("q") ?? undefined,
     sort: url.searchParams.get("sort") ?? undefined,
     zakat: url.searchParams.get("zakat") === "1",
+    kind: url.searchParams.get("kind") ?? undefined,
     ids: ids?.length ? ids : undefined,
   });
   return json({ campaigns });

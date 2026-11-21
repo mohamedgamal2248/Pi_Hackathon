@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { NeedDocs } from "@/components/NeedDocs";
+import { NeedStepper } from "@/components/NeedStepper";
 import { useLang } from "@/lib/client/i18n";
 import { nt, needError, type NeedKey } from "@/lib/client/need-i18n";
 import type { NeedConfig, NeedReq } from "@/lib/client/need-types";
@@ -24,6 +25,23 @@ function RequestCard({ r, cfg, reload }: { r: NeedReq; cfg: NeedConfig | null; r
   const { api } = usePi();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [update, setUpdate] = useState("");
+  const [posted, setPosted] = useState(false);
+
+  async function postUpdate() {
+    setBusy(true);
+    setError(null);
+    setPosted(false);
+    try {
+      await api(`/api/need/${r.id}/updates`, { method: "POST", body: JSON.stringify({ body: update }) });
+      setUpdate("");
+      setPosted(true);
+    } catch (e) {
+      setError(e instanceof ApiError ? needError(lang, e.message, t("error_generic")) : t("error_generic"));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function act(path: string, method = "POST") {
     setBusy(true);
@@ -48,6 +66,7 @@ function RequestCard({ r, cfg, reload }: { r: NeedReq; cfg: NeedConfig | null; r
         </div>
         <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${TONE[r.status] ?? "bg-surface-2"}`}>{nt(lang, `st_${r.status}` as NeedKey)}</span>
       </div>
+      <NeedStepper status={r.status} />
       <p className="line-clamp-3 text-sm text-muted">{r.description}</p>
 
       {r.adminNote && ["rejected", "needs_more_proof", "stage1_paid"].includes(r.status) && (
@@ -80,6 +99,22 @@ function RequestCard({ r, cfg, reload }: { r: NeedReq; cfg: NeedConfig | null; r
           <button className="btn btn-primary w-full" disabled={busy || !r.docs.some((d) => d.kind === "settlement")} onClick={() => act("/proof")}>
             {nt(lang, "settle_btn")}
           </button>
+        </div>
+      )}
+
+      {r.campaignId && ["fundraising", "payout_due", "stage1_paid", "proof_submitted"].includes(r.status) && (
+        <div className="space-y-2 rounded-2xl bg-surface-2 p-3">
+          <h3 className="text-sm font-bold">{nt(lang, "upd_title")}</h3>
+          <textarea className="input" rows={2} maxLength={400} value={update} onChange={(e) => setUpdate(e.target.value)} aria-label={nt(lang, "upd_title")} />
+          <p className="text-xs text-muted">{nt(lang, "upd_hint")}</p>
+          <button className="btn btn-primary w-full" disabled={busy || update.trim().length < 10} onClick={postUpdate}>
+            {nt(lang, "upd_send")}
+          </button>
+          {posted && (
+            <p role="status" className="text-xs text-brand">
+              {nt(lang, "upd_sent")}
+            </p>
+          )}
         </div>
       )}
 

@@ -9,6 +9,8 @@ import { Logo } from "@/components/Logo";
 import { Icon, type IconName } from "@/components/Icon";
 import { useLang, type TKey } from "@/lib/client/i18n";
 import { usePi } from "@/lib/client/pi";
+import { nt } from "@/lib/client/need-i18n";
+import { useNeedEnabled } from "@/lib/client/need-types";
 
 const NAV: { href: string; label: TKey; icon: IconName }[] = [
   { href: "/", label: "home", icon: "home" },
@@ -36,8 +38,9 @@ function LangToggle() {
 }
 
 export function Shell({ children }: { children: ReactNode }) {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const { user, signIn, signingIn, ready } = usePi();
+  const needOn = useNeedEnabled();
   const path = usePathname();
   const [quick, setQuick] = useState(false);
   const [staging, setStaging] = useState(false);
@@ -80,6 +83,12 @@ export function Shell({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="flex items-center gap-2">
+            {needOn && (
+              <Link href="/need/new" className="btn btn-primary whitespace-nowrap !min-h-10 !px-3 !py-2 text-sm">
+                <Icon name="plus" size={16} /> <span className="sm:hidden">{nt(lang, "nav_open_fund_short")}</span>
+                <span className="hidden sm:inline">{nt(lang, "nav_open_fund")}</span>
+              </Link>
+            )}
             <LangToggle />
             {user ? (
               <Link href="/me" dir="ltr" className="chip hidden max-w-[10rem] truncate sm:inline-flex">

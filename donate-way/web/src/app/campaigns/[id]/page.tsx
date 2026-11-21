@@ -140,7 +140,7 @@ function CampaignView() {
       </aside>
 
       <div className="space-y-5 lg:col-start-1 lg:row-start-1">
-        {c.need && <NeedFundPanel need={c.need} />}
+        {c.need && <NeedFundPanel need={c.need} campaignId={c.id} onChanged={load} />}
         {c.match && (
           <section className="card space-y-1 border-brand/50 p-4 text-sm">
             <b className="flex items-center gap-2 text-brand">

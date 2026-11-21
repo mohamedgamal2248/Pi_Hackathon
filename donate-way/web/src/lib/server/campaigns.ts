@@ -65,7 +65,7 @@ function shape(c: CampaignRow, s?: { raised: number; donors: number; released: n
   return { ...rest, goal: Number(c.goal), raised: s?.raised ?? 0, donors: s?.donors ?? 0, released: s?.released ?? 0 };
 }
 
-export async function listCampaigns(opts: { category?: string; q?: string; sort?: string; statuses?: string[]; zakat?: boolean; ids?: string[] }) {
+export async function listCampaigns(opts: { category?: string; q?: string; sort?: string; statuses?: string[]; zakat?: boolean; ids?: string[]; kind?: string }) {
   await syncNeedStatuses();
   let query = db()
     .from("dw_campaigns")
@@ -75,6 +75,7 @@ export async function listCampaigns(opts: { category?: string; q?: string; sort?
     .limit(100);
   if (opts.category && (CATEGORIES as readonly string[]).includes(opts.category)) query = query.eq("category", opts.category);
   if (opts.zakat) query = query.eq("zakat_eligible", true);
+  if (opts.kind === "need" || opts.kind === "charity") query = query.eq("kind", opts.kind);
   if (opts.ids) query = query.in("id", opts.ids);
   if (opts.q) {
     const q = opts.q.replace(/[%,()]/g, " ").slice(0, 60);
@@ -95,6 +96,9 @@ export async function listCampaigns(opts: { category?: string; q?: string; sort?
     default:
       list.sort((a, b) => rank(a.status) - rank(b.status) || Number(b.urgent) - Number(a.urgent));
   }
+  // Verified-need funds come first inside each status group (open ones first of all). Stable sort keeps the chosen order otherwise.
+  const key = (c: { status: string; kind?: string }) => rank(c.status) * 2 + (c.kind === "need" ? 0 : 1);
+  list.sort((a, b) => key(a) - key(b));
   return list;
 }
 

@@ -41,6 +41,7 @@ export type NeedFund = {
   isOwner: boolean;
   payouts: { stage: number; amount: number; txid: string | null; completed_at: string | null }[];
   stage1Pct: number;
+  vouches: { count: number; names: string[]; mine: boolean; canVouch: boolean };
   proofVisible: boolean;
   proofReady: boolean;
   proof: { id: string; url: string }[];

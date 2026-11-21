@@ -7,6 +7,9 @@ import { CampaignCard, Cover, Progress } from "@/components/CampaignCard";
 import { Icon, type IconName } from "@/components/Icon";
 import { Money } from "@/components/Money";
 import { HomeTiles } from "@/components/HomeTiles";
+import { NeedFunds, NeedHero } from "@/components/NeedHome";
+import { nt } from "@/lib/client/need-i18n";
+import { useNeedEnabled } from "@/lib/client/need-types";
 import { ChallengeCard } from "@/components/ChallengeCard";
 import { QuickDonate } from "@/components/QuickDonate";
 import { useLang, type TKey } from "@/lib/client/i18n";
@@ -51,6 +54,7 @@ export default function HomePage() {
   const [campaigns, setCampaigns] = useState<Campaign[] | null>(null);
   const [home, setHome] = useState<Home | null>(null);
   const [board, setBoard] = useState<"week" | "all">("week");
+  const needOn = useNeedEnabled();
 
   useEffect(() => {
     api<Home>("/api/stats").then(setHome).catch(() => undefined);
@@ -58,7 +62,8 @@ export default function HomePage() {
 
   useEffect(() => {
     const params = new URLSearchParams({ sort });
-    if (category) params.set("category", category);
+    if (category === "need") params.set("kind", "need");
+    else if (category) params.set("category", category);
     if (q.trim()) params.set("q", q.trim());
     const timer = setTimeout(() => {
       api<{ campaigns: Campaign[] }>(`/api/campaigns?${params}`)
@@ -84,6 +89,8 @@ export default function HomePage() {
     <div className="space-y-8 lg:space-y-10">
       {/* Hero + quick donate */}
       <div className="stagger grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+        {needOn && <NeedHero total={s?.total} donors={s?.donors} funds={s?.campaigns} />}
+        {!needOn && (
         <section className="card relative overflow-hidden p-5 sm:p-7">
           <div className="pointer-events-none absolute -end-20 -top-20 h-60 w-60 rounded-full bg-brand/10 blur-3xl" aria-hidden />
           <h1 className="relative text-2xl font-bold leading-snug sm:text-3xl lg:text-4xl">{t("hero_title")}</h1>
@@ -108,8 +115,11 @@ export default function HomePage() {
             </div>
           )}
         </section>
+        )}
         <QuickDonate />
       </div>
+
+      {needOn && <NeedFunds />}
 
       <HomeTiles />
 
@@ -145,6 +155,11 @@ export default function HomePage() {
           <button className="chip" data-active={category === ""} onClick={() => setCategory("")}>
             {t("all")}
           </button>
+          {needOn && (
+            <button className="chip" data-active={category === "need"} onClick={() => setCategory("need")}>
+              {nt(lang, "chip_need")}
+            </button>
+          )}
           {CATEGORY_KEYS.map((c) => (
             <button key={c} className="chip" data-active={category === c} onClick={() => setCategory(c)}>
               {t(`cat_${c}` as TKey)}

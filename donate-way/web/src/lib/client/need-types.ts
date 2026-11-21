@@ -35,17 +35,34 @@ import { useEffect, useState } from "react";
 import { usePi } from "./pi";
 
 let cached: boolean | null = null;
+let pending: Promise<boolean> | null = null;
+const KEY = "sanad_need_on";
+
+// One shared request for every component that asks. The last answer is remembered on the device so the
+// page does not flash between layouts on the next visit.
 export function useNeedEnabled(): boolean {
   const { api } = usePi();
   const [on, setOn] = useState<boolean>(cached ?? false);
   useEffect(() => {
     if (cached !== null) return;
-    api<{ enabled: boolean }>("/api/need")
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- read once after hydration
+      if (localStorage.getItem(KEY) === "1") setOn(true);
+    } catch {}
+    pending ??= api<{ enabled: boolean }>("/api/need")
       .then((r) => {
         cached = r.enabled;
-        setOn(r.enabled);
+        try {
+          localStorage.setItem(KEY, r.enabled ? "1" : "0");
+        } catch {}
+        return r.enabled;
       })
-      .catch(() => undefined);
+      .catch(() => false);
+    let alive = true;
+    pending.then((v) => alive && setOn(v));
+    return () => {
+      alive = false;
+    };
   }, [api]);
   return on;
 }

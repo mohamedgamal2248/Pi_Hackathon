@@ -55,6 +55,7 @@ export default function Terms() {
             بعد انتهاء المدة بيتحوّل لصاحب الحالة <b>70% من اللي اتجمع</b>، والـ 30% الباقية بتتحوّل بعد ما يرفع إثبات إن الفاتورة أو المصاريف اتسددت، ونعرض الإثبات
             للمتبرعين. التحويل بيكون دايمًا للحساب اللي دفع رسوم التأكيد.
           </li>
+          <li>لو الرائد ما رفعش إثبات السداد خلال 14 يوم من التحويل الأول، بتتقفل الحالة والنسبة الباقية بتتحوّل لصندوق التبرع العام.</li>
           <li>طلب واحد شغال لكل رائد في نفس الوقت. سند ممكن ترفض أي طلب أو توقفه لو في شك في المستندات.</li>
         </ul>
           </>
@@ -108,6 +109,7 @@ export default function Terms() {
           When the window ends, <b>70% of what was collected</b> is paid to the applicant. The remaining 30% is paid after the applicant uploads proof that the bill or
           fees were paid, and that proof is shown to donors. Payouts always go to the account that paid the confirmation fee.
         </li>
+        <li>If the applicant does not upload proof of payment within 14 days of the first payout, the case is closed and the remaining share goes to the general donation fund.</li>
         <li>One active request per Pioneer at a time. Sanad may reject or stop any request it doubts.</li>
       </ul>
         </>
